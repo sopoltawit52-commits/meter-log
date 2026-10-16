@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>มิเตอร์ห้องเรา</title>
+<meta name="theme-color" content="#0E7466">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="มิเตอร์ห้อง">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#EEF2F0; --surface:#FFFFFF; --surface2:#F5F8F6; --line:#D9E1DD;
+  --ink:#15201C; --muted:#5B6A64; --accent:#0E7466; --accent-ink:#FFFFFF;
+  --est:#8CC5BC; --fc:#C98300; --fc-soft:#F6E7C8;
+  --good:#17803D; --warn:#B45309; --bad:#B42318;
+  --odo-bg:#1B2522; --odo-ink:#F4F7F5; --odo-red:#C8322A;
+  --shadow:0 1px 2px rgba(20,40,34,.06),0 4px 14px rgba(20,40,34,.05);
+  --sans:"IBM Plex Sans Thai",system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0D1412; --surface:#16201D; --surface2:#1C2824; --line:#2A3833;
+    --ink:#E4ECE9; --muted:#95A69F; --accent:#34C3AE; --accent-ink:#06201B;
+    --est:#2B6A61; --fc:#EDB348; --fc-soft:#3A2F17;
+    --good:#4ADE80; --warn:#F59E0B; --bad:#F87171;
+    --odo-bg:#070B0A; --odo-ink:#EAF2EF; --odo-red:#E0483F;
+    --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0D1412; --surface:#16201D; --surface2:#1C2824; --line:#2A3833;
+  --ink:#E4ECE9; --muted:#95A69F; --accent:#34C3AE; --accent-ink:#06201B;
+  --est:#2B6A61; --fc:#EDB348; --fc-soft:#3A2F17;
+  --good:#4ADE80; --warn:#F59E0B; --bad:#F87171;
+  --odo-bg:#070B0A; --odo-ink:#EAF2EF; --odo-red:#E0483F;
+  --shadow:none;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+[hidden]{display:none!important}
+img{max-width:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+.wrap{max-width:560px;margin:0 auto;padding-inline:16px;padding-block:14px 110px;display:flex;flex-direction:column;gap:14px}
+h1,h2,h3{margin:0;text-wrap:balance;line-height:1.25}
+h1{font-size:20px;font-weight:700}
+h2{font-size:16px;font-weight:600}
+.num,td.n,.tab{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.between{justify-content:space-between}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.sub{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:4px 10px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);white-space:nowrap}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+.chip.good{color:var(--good)} .chip.warn{color:var(--warn)} .chip.bad{color:var(--bad)}
+.banner{border-radius:12px;padding:10px 14px;font-size:13.5px;background:var(--fc-soft);color:var(--ink);border:1px solid var(--line)}
+/* odometer */
+.odo{display:flex;gap:3px;align-items:stretch;background:var(--odo-bg);padding:6px;border-radius:10px;width:max-content;max-width:100%;overflow-x:auto}
+.odo span{font:600 26px/1 var(--mono);color:var(--odo-ink);background:linear-gradient(#26332F,#111816 48%,#1a2421 52%,#26332F);padding:8px 5px;border-radius:4px;min-width:24px;text-align:center}
+.odo span.dec{background:linear-gradient(#d4453c,var(--odo-red) 48%,#b3281f 52%,#d4453c);color:#fff}
+.bill{display:flex;flex-direction:column;gap:2px}
+.bill .big{font-size:38px;font-weight:700;letter-spacing:-.01em;line-height:1.1}
+.bill .big small{font-size:18px;font-weight:600;color:var(--muted);margin-left:4px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpi{background:var(--surface2);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.kpi b{font-size:18px;font-weight:600}
+.kpi span{font-size:12px;color:var(--muted)}
+.bar{height:10px;border-radius:6px;background:var(--surface2);overflow:hidden;display:flex;border:1px solid var(--line)}
+.bar i{display:block;height:100%}
+.cmp{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.delta{font-weight:600}
+.delta.up{color:var(--bad)} .delta.down{color:var(--good)}
+/* form */
+label{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:5px}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:11px 12px;width:100%;min-width:0}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input.meter{font:600 24px/1.2 var(--mono);letter-spacing:.04em}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--surface2);color:var(--ink);padding:10px 14px;font-weight:600}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent;padding:13px 16px;font-size:16px}
+button.ghost{background:transparent}
+button.danger{color:var(--bad)}
+button:disabled{opacity:.5;cursor:not-allowed}
+.seg{display:inline-flex;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;padding:6px 12px;font-size:13px;border-radius:7px}
+.seg button[aria-pressed="true"]{background:var(--surface);box-shadow:var(--shadow);color:var(--accent)}
+/* chart */
+.chart svg{width:100%;height:auto;display:block}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-2px}
+/* history */
+.hist{display:flex;flex-direction:column}
+.hrow{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:11px 2px;border-bottom:1px solid var(--line)}
+.hrow:last-child{border-bottom:0}
+.hrow .v{font:600 16px var(--mono)}
+.hrow .d{font-size:13px;color:var(--muted)}
+.hrow .u{text-align:right;font-size:14px}
+.hrow .u small{display:block;color:var(--muted);font-size:12px}
+.xbtn{padding:6px 10px;font-size:13px}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{background:var(--surface2);font-weight:600}
+td.n{text-align:right}
+/* nav */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));z-index:10}
+nav.tabs .in{display:grid;grid-template-columns:repeat(4,1fr);max-width:560px;width:100%;gap:4px}
+nav.tabs button{border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;font-weight:500;color:var(--muted);padding:6px 4px}
+nav.tabs button svg{width:22px;height:22px}
+nav.tabs button[aria-current="page"]{color:var(--accent);font-weight:600}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;z-index:20;max-width:calc(100% - 32px)}
+.pinov{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
+.pinbox{width:100%;max-width:360px}
+ol.tips{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+details summary{cursor:pointer;font-weight:600}
+@media (prefers-reduced-motion:no-preference){.bar i{transition:width .4s}}
+@media (max-width:380px){.kpis{grid-template-columns:1fr 1fr}.bill .big{font-size:32px}.odo span{font-size:22px;min-width:20px}}
+</style>
+
+</head>
+<body>
+<div class="wrap" id="app">
+  <header class="top">
+    <div>
+      <h1>มิเตอร์ห้องเรา</h1>
+      <div class="small muted" id="syncState">กำลังโหลด…</div>
+    </div>
+    <span class="chip" id="lastChip"><span class="dot"></span><span>–</span></span>
+  </header>
+  <div class="banner" id="demoBanner" hidden>กำลังแสดง <b>ข้อมูลตัวอย่าง</b> ยังไม่ใช่ข้อมูลของคุณ — บันทึกเลขมิเตอร์ครั้งแรก หรือไปที่แท็บ “ตั้งค่า” เพื่อนำเข้าไฟล์ Excel เดิม</div>
+
+  <!-- HOME -->
+  <section id="v-home" class="view" style="display:flex;flex-direction:column;gap:14px">
+    <div class="card">
+      <div class="row between">
+        <div class="sub" id="cycleLabel">รอบบิลนี้</div>
+        <div class="small muted" id="cycleLeft"></div>
+      </div>
+      <div class="bill">
+        <span class="small muted">ค่าไฟที่คาดว่าจะจ่ายรอบนี้</span>
+        <div class="big num" id="billBig">฿–</div>
+        <span class="small muted" id="billSub"></span>
+      </div>
+      <div class="bar" aria-hidden="true"><i id="barUsed" style="background:var(--accent);width:0"></i><i id="barFc" style="background:var(--fc);width:0;opacity:.7"></i></div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>ใช้ไปแล้ว</span><span><i style="background:var(--fc);opacity:.7"></i>คาดว่าจะใช้เพิ่ม</span></div>
+      <div class="kpis">
+        <div class="kpi"><b class="num" id="kUsed">–</b><span>ใช้ไปแล้ว (หน่วย)</span></div>
+        <div class="kpi"><b class="num" id="kProj">–</b><span>ทั้งรอบ (คาด)</span></div>
+        <div class="kpi"><b class="num" id="kAvg">–</b><span>เฉลี่ย/วัน</span></div>
+      </div>
+      <div class="cmp small" id="cmpLine"></div>
+    </div>
+
+    <div class="card">
+      <div class="row between"><h2>จดเลขมิเตอร์</h2><span class="small muted" id="lastRead"></span></div>
+      <div class="odo" id="odo" aria-label="เลขมิเตอร์ล่าสุด"></div>
+      <div class="small muted" id="nowEst"></div>
+      <form id="entryForm" style="display:flex;flex-direction:column;gap:10px" novalidate>
+        <div class="grid2">
+          <label>วันที่<input type="date" id="fDate" required></label>
+          <label>เลขมิเตอร์<input class="meter" id="fVal" type="text" inputmode="decimal" autocomplete="off" placeholder="00000" required></label>
+        </div>
+        <label>หมายเหตุ (ไม่บังคับ)<input id="fNote" type="text" placeholder="เช่น เปิดแอร์ทั้งคืน, ไม่อยู่ห้อง 3 วัน"></label>
+        <div class="small" id="fHint" aria-live="polite"></div>
+        <button class="primary" type="submit" id="fSave">บันทึก</button>
+      </form>
+    </div>
+
+    <div class="card chart">
+      <div class="row between"><h2>14 วันล่าสุด</h2><button class="ghost xbtn" data-go="charts">ดูกราฟทั้งหมด →</button></div>
+      <div id="miniChart"></div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>จดจริง</span><span><i style="background:var(--est)"></i>เฉลี่ยจากช่วงที่ไม่ได้จด</span><span><i style="background:var(--fc)"></i>ประมาณ (ยังไม่จด)</span></div>
+    </div>
+  </section>
+
+  <!-- CHARTS -->
+  <section id="v-charts" class="view" hidden style="flex-direction:column;gap:14px">
+    <div class="card chart">
+      <div class="row between"><h2>ใช้ไฟรายวัน</h2>
+        <div class="seg" id="rangeSeg"><button type="button" data-r="30" aria-pressed="true">30 วัน</button><button type="button" data-r="60">60</button><button type="button" data-r="90">90</button></div>
+      </div>
+      <div id="dailyChart"></div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>จดจริง</span><span><i style="background:var(--est)"></i>เฉลี่ยจากช่วงที่ไม่ได้จด</span><span><i style="background:var(--fc)"></i>ประมาณ</span><span><i style="background:var(--muted);height:2px"></i>ค่าเฉลี่ย</span></div>
+    </div>
+    <div class="card chart">
+      <div class="row between"><h2>เทียบรายรอบบิล</h2>
+        <div class="seg" id="unitSeg"><button type="button" data-u="baht" aria-pressed="true">บาท</button><button type="button" data-u="unit">หน่วย</button></div>
+      </div>
+      <div id="cycleChart"></div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>ใช้จริง</span><span><i style="background:var(--fc)"></i>คาดการณ์รอบนี้</span></div>
+    </div>
+    <div class="card">
+      <h2>สรุปเปรียบเทียบ</h2>
+      <div class="tablewrap"><table id="cmpTable"></table></div>
+    </div>
+  </section>
+
+  <!-- HISTORY -->
+  <section id="v-hist" class="view" hidden style="flex-direction:column;gap:14px">
+    <div class="card">
+      <div class="row between"><h2>ประวัติการจด</h2><span class="small muted" id="histCount"></span></div>
+      <div class="hist" id="histList"></div>
+      <button type="button" id="moreBtn" hidden>แสดงเพิ่ม</button>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="v-set" class="view" hidden style="flex-direction:column;gap:14px">
+    <div class="card">
+      <h2>อัตราค่าไฟของที่พัก</h2>
+      <form id="setForm" style="display:flex;flex-direction:column;gap:10px" novalidate>
+        <div class="grid2">
+          <label>ราคาต่อหน่วย (บาท)<input id="sRate" type="text" inputmode="decimal"></label>
+          <label>ค่าบริการคงที่/เดือน<input id="sFee" type="text" inputmode="decimal" placeholder="0"></label>
+          <label>วันตัดรอบบิล (วันที่)<select id="sCycle"></select></label>
+          <label>ขั้นต่ำต่อเดือน (บาท)<input id="sMin" type="text" inputmode="decimal" placeholder="0"></label>
+        </div>
+        <div class="small muted">วันตัดรอบ = วันที่หอจดมิเตอร์ เช่น ทุกวันที่ 25 รอบบิลจะเป็น 25 ถึง 24 ของเดือนถัดไป</div>
+        <button type="submit" class="primary">บันทึกการตั้งค่า</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>นำเข้าข้อมูลเดิม</h2>
+      <div class="small muted">รองรับไฟล์ .xlsx .xls .csv หรือคัดลอกจาก Excel / Google Sheets มาวางได้เลย ต้องมีคอลัมน์ <b>วันที่</b> และ <b>เลขมิเตอร์</b> (หรือหน่วยที่ใช้ต่อวัน) รองรับปี พ.ศ. และชื่อเดือนไทย</div>
+      <label>เลือกไฟล์<input type="file" id="impFile" accept=".xlsx,.xls,.csv,.txt"></label>
+      <details><summary class="small">หรือวางข้อความ</summary>
+        <textarea id="impText" rows="5" placeholder="วันที่	เลขมิเตอร์&#10;1/8/2568	12034&#10;8/8/2568	12088" style="margin-top:8px"></textarea>
+        <button type="button" id="impParseText" style="margin-top:8px">อ่านข้อความ</button>
+      </details>
+      <div id="impMap" hidden style="display:flex;flex-direction:column;gap:10px">
+        <div class="grid2">
+          <label>คอลัมน์วันที่<select id="mDate"></select></label>
+          <label>คอลัมน์ตัวเลข<select id="mVal"></select></label>
+        </div>
+        <label>ตัวเลขในคอลัมน์นี้คือ
+          <select id="mMode"><option value="meter">เลขมิเตอร์สะสม (เลขบนหน้าปัด)</option><option value="units">หน่วยที่ใช้ในแต่ละวัน/ช่วง</option></select>
+        </label>
+        <label id="mBaseWrap" hidden>เลขมิเตอร์ก่อนแถวแรก (ถ้าไม่รู้ใส่ 0)<input id="mBase" type="text" inputmode="decimal" value="0"></label>
+        <div class="small" id="impSummary"></div>
+        <div class="tablewrap"><table id="impPreview"></table></div>
+        <button type="button" class="primary" id="impGo">นำเข้า</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>สำรองข้อมูล</h2>
+      <div class="small muted">ทุกการบันทึกจะเขียนลงชีต “Readings” ใน Google Sheets ทันที เปิดดู แก้ หรือดาวน์โหลดจาก Google Sheets ได้ตามปกติ (มีประวัติเวอร์ชันของ Google ให้ย้อนได้)</div>
+      <div class="row"><button type="button" id="copyBtn">คัดลอกเป็นข้อความ</button><button type="button" id="logoutBtn" class="ghost">ออกจากระบบ (ล้าง PIN)</button></div>
+    </div>
+
+    <div class="card">
+      <h2>ลืมจดก็ไม่เป็นไร</h2>
+      <ol class="tips small">
+        <li>ไม่ต้องจดทุกวัน ระบบจะเฉลี่ยหน่วยที่ใช้ให้เท่า ๆ กันในวันที่ไม่ได้จด (แถบสีอ่อนในกราฟ)</li>
+        <li>วันหลังจากจดครั้งล่าสุดจะถูกประมาณจากอัตราใช้ 14 วันล่าสุด (แถบสีส้ม) ยอดเงินคาดการณ์จึงยังขึ้นเสมอ</li>
+        <li>แนะนำจดอย่างน้อย <b>สัปดาห์ละครั้ง</b> และ <b>วันตัดรอบบิล</b> เพื่อให้ยอดตรงกับบิลหอ</li>
+        <li>ย้อนจดได้ เลือกวันที่ย้อนหลังแล้วกรอกเลขจากรูปถ่ายมิเตอร์ได้เลย</li>
+        <li>ตั้งปลุกในมือถือทุกวันอาทิตย์ แล้วเพิ่มหน้านี้ไว้ที่หน้าจอหลัก (แชร์ → เพิ่มลงหน้าจอโฮม)</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h2>ล้างข้อมูล</h2>
+      <div class="small muted">ลบบันทึกทั้งหมด ใช้เมื่อนำเข้าผิดและต้องการเริ่มใหม่</div>
+      <button type="button" class="danger" id="wipeBtn">ลบข้อมูลทั้งหมด</button>
+    </div>
+  </section>
+</div>
+
+<nav class="tabs" aria-label="เมนู"><div class="in">
+  <button type="button" data-tab="home" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>หน้าหลัก</button>
+  <button type="button" data-tab="charts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>กราฟ</button>
+  <button type="button" data-tab="hist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>ประวัติ</button>
+  <button type="button" data-tab="set"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>ตั้งค่า</button>
+</div></nav>
+<div class="toast" id="toast" hidden></div>
+<div id="pinOverlay" class="pinov" hidden>
+  <form id="pinForm" class="card pinbox" novalidate>
+    <h2>มิเตอร์ห้องเรา</h2>
+    <label>ใส่ PIN เพื่อเข้าใช้งาน<input id="pinInput" type="password" autocomplete="current-password" inputmode="text"></label>
+    <div class="small" id="pinMsg" style="color:var(--bad)" aria-live="polite"></div>
+    <button type="submit" class="primary">เข้าใช้งาน</button>
+  </form>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const DAY=86400000;
+const TH_MON=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+const TH_FULL=["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+const EN_MON=["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+const DEFAULTS={rate:8,fee:0,cycleDay:1,minCharge:0};
+
+// ---------- date helpers (day numbers, UTC-based) ----------
+const dn=(y,m,d)=>Math.round(Date.UTC(y,m,d)/DAY);
+const todayDn=()=>{const t=new Date();return dn(t.getFullYear(),t.getMonth(),t.getDate());};
+const ymd=n=>{const d=new Date(n*DAY);return{y:d.getUTCFullYear(),m:d.getUTCMonth(),d:d.getUTCDate()};};
+const key=n=>{const o=ymd(n);return o.y+"-"+String(o.m+1).padStart(2,"0")+"-"+String(o.d).padStart(2,"0");};
+const fromKey=k=>{const [y,m,d]=k.split("-").map(Number);return dn(y,m-1,d);};
+const fmtD=(n,withY)=>{const o=ymd(n);return o.d+" "+TH_MON[o.m]+(withY?" "+String(o.y+543).slice(2):"");};
+const fmtN=(v,dig=0)=>v==null||!isFinite(v)?"–":v.toLocaleString("th-TH",{minimumFractionDigits:dig,maximumFractionDigits:dig});
+const fmtB=v=>"฿"+fmtN(Math.round(v));
+const num=s=>{if(typeof s==="number")return s;const t=String(s??"").replace(/[,\s฿]/g,"");if(t==="")return NaN;return Number(t);};
+
+// ---------- state ----------
+let readings=[]; // {k, n, v, note}
+let settings={...DEFAULTS};
+let mode="init";
+let demo=false;
+let range=30, cycUnit="baht", histShown=40;
+
+// ---------- storage layer (Apps Script API) ----------
+const API_URL="https://script.google.com/macros/s/AKfycbzyutxavAT1x2dE4SQZvKuyAvzIkdL7df7ZCEVEc_R0xwwz2WOGqPEcJoPHAjqBw1A_/exec";
+const PIN_KEY="meterlog.pin", CACHE_KEY="meterlog.cache";
+const lsGet=k=>{try{return localStorage.getItem(k);}catch(e){return null;}};
+const lsSet=(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v);}catch(e){}};
+let pin=lsGet(PIN_KEY)||"";
+function askPin(msg){
+  return new Promise(res=>{
+    const ov=$("#pinOverlay");$("#pinMsg").textContent=msg||"";ov.hidden=false;
+    const inp=$("#pinInput");inp.value="";setTimeout(()=>inp.focus(),50);
+    $("#pinForm").onsubmit=e=>{e.preventDefault();const p=inp.value.trim();if(!p)return;ov.hidden=true;pin=p;lsSet(PIN_KEY,p);res(p);};
+  });
+}
+async function gs(action,...args){
+  if(!pin)await askPin();
+  for(let i=0;i<3;i++){
+    let r;
+    try{
+      const resp=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({pin,action,args}),redirect:"follow"});
+      r=await resp.json();
+    }catch(e){throw new Error(navigator.onLine===false?"ไม่มีอินเทอร์เน็ต":"ติดต่อเซิร์ฟเวอร์ไม่ได้");}
+    if(r.ok)return r.data;
+    if(r.error==="bad_pin"){pin="";lsSet(PIN_KEY,null);await askPin("PIN ไม่ถูกต้อง ลองใหม่");continue;}
+    throw new Error(r.error||"เกิดข้อผิดพลาด");
+  }
+  throw new Error("PIN ไม่ถูกต้อง");
+}
+function applyData(d,fromCache){
+  if(!d)return;
+  setReadingsFromMap(d.readings||{});
+  settings={...DEFAULTS,...(d.settings||{})};
+  mode="cloud";fillSettings();render();
+  if(!fromCache){lsSet(CACHE_KEY,JSON.stringify({d,at:Date.now()}));
+    $("#syncState").textContent="เก็บใน Google Sheets · อัปเดต "+new Date().toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});}
+}
+function setReadingsFromMap(map){
+  readings=Object.entries(map).map(([k,o])=>({k,n:fromKey(k),v:Number(o.v),note:o.note||""})).filter(r=>isFinite(r.v)).sort((a,b)=>a.n-b.n);
+}
+async function putReading(k,v,note){applyData(await gs("saveReading",k,v,note||""));}
+async function delReading(k){applyData(await gs("deleteReading",k));}
+async function putSettings(s){applyData(await gs("saveSettings",s));}
+async function refresh(){
+  try{$("#syncState").textContent="กำลังซิงก์…";applyData(await gs("getData"));}
+  catch(e){$("#syncState").textContent=(lsGet(CACHE_KEY)?"แสดงข้อมูลล่าสุดที่บันทึกไว้ · ":"")+(e&&e.message||e);}
+}
+async function init(){
+  try{const c=JSON.parse(lsGet(CACHE_KEY)||"null");if(c&&c.d){applyData(c.d,true);
+    $("#syncState").textContent="ข้อมูลเมื่อ "+new Date(c.at).toLocaleString("th-TH",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});}}catch(e){}
+  await refresh();
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")refresh();});
+  if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{});}
+}
+$("#logoutBtn").addEventListener("click",()=>{pin="";lsSet(PIN_KEY,null);lsSet(CACHE_KEY,null);location.reload();});
+
+// ---------- demo data (not stored) ----------
+function demoReadings(){
+  const t=todayDn();let v=18420;const out=[];let seed=7;
+  const rnd=()=>{seed=(seed*9301+49297)%233280;return seed/233280;};
+  for(let n=t-95;n<=t-2;n++){
+    const wk=ymd(n);const dow=new Date(n*DAY).getUTCDay();
+    v+=5.2+rnd()*3.5+(dow===0||dow===6?2.2:0)+(wk.m>=3&&wk.m<=5?1.5:0);
+    const r=rnd();
+    if(r<0.42||n===t-2)out.push({k:key(n),n,v:Math.round(v),note:""});
+  }
+  return out;
+}
+
+// ---------- core model ----------
+function model(){
+  const R=demo?demoReadings():readings;
+  const t=todayDn();
+  const daily=new Map(); // n -> {u, kind}
+  const issues=new Set();
+  for(let i=1;i<R.length;i++){
+    const a=R[i-1],b=R[i];const gap=b.n-a.n;if(gap<=0)continue;
+    let du=b.v-a.v; if(du<0){issues.add(b.k);du=0;}
+    const per=du/gap;
+    for(let n=a.n+1;n<=b.n;n++)daily.set(n,{u:per,kind:gap===1?"act":"est"});
+  }
+  // recent rate from last ~14 days of readings
+  let rate=null;
+  if(R.length>=2){
+    const last=R[R.length-1];let j=R.length-2;
+    while(j>0&&last.n-R[j].n<14)j--;
+    const a=R[j];const span=last.n-a.n;
+    if(span>0)rate=Math.max(0,(last.v-a.v)/span);
+  }
+  const last=R.length?R[R.length-1]:null;
+  return{R,daily,rate,last,t,issues};
+}
+function cycleOf(n,D){const o=ymd(n);let s=o.d>=D?dn(o.y,o.m,D):dn(o.y,o.m-1,D);const so=ymd(s);const e=dn(so.y,so.m+1,D)-1;return{s,e};}
+function billOf(units){const s=settings;return Math.max(units*num(s.rate)+ (num(s.fee)||0), num(s.minCharge)||0);}
+function cycleStats(M,c){
+  let act=0,fc=0,days=0,known=0;
+  for(let n=c.s;n<=c.e;n++){
+    const d=M.daily.get(n);
+    if(d){act+=d.u;known++;}
+    else if(M.last&&n>M.last.n&&M.rate!=null){fc+=M.rate;}
+  }
+  return{act,fc,total:act+fc,known};
+}
+
+// ---------- rendering ----------
+function render(){
+  if(mode!=="init")demo=readings.length===0;
+  $("#demoBanner").hidden=!demo;
+  const M=model();
+  renderHome(M);
+  if(!$("#v-charts").hidden)renderCharts(M);
+  if(!$("#v-hist").hidden)renderHist(M);
+}
+function renderHome(M){
+  const D=Number(settings.cycleDay)||1;const c=cycleOf(M.t,D);
+  const st=cycleStats(M,c);
+  // actual used so far should include forecast up to today only (not future)
+  let usedToDate=0,fcToDate=0;
+  for(let n=c.s;n<=Math.min(M.t,c.e);n++){const d=M.daily.get(n);if(d)usedToDate+=d.u;else if(M.last&&n>M.last.n&&M.rate!=null)fcToDate+=M.rate;}
+  const future=Math.max(0,st.total-usedToDate-fcToDate);
+  const bill=billOf(st.total);
+  $("#cycleLabel").textContent="รอบบิล "+fmtD(c.s)+" – "+fmtD(c.e,true);
+  const left=c.e-M.t;$("#cycleLeft").textContent=left>0?"เหลืออีก "+left+" วัน":"วันสุดท้ายของรอบ";
+  $("#billBig").innerHTML=M.last?fmtB(bill).replace("฿","฿")+"":"฿–";
+  $("#billSub").textContent=M.last?("ประมาณ "+fmtN(st.total)+" หน่วย × "+fmtN(num(settings.rate),2)+" บาท"+(num(settings.fee)?" + ค่าบริการ "+fmtN(num(settings.fee))+" บาท":"")):"บันทึกอย่างน้อย 2 ครั้งเพื่อเริ่มคาดการณ์";
+  const tot=Math.max(st.total,0.0001);
+  $("#barUsed").style.width=(usedToDate/tot*100)+"%";
+  $("#barFc").style.width=((fcToDate+future)/tot*100)+"%";
+  $("#kUsed").textContent=fmtN(usedToDate+fcToDate);
+  $("#kProj").textContent=fmtN(st.total);
+  $("#kAvg").textContent=M.rate!=null?fmtN(M.rate,1):"–";
+  // comparison with previous cycle at same point
+  const pc=cycleOf(c.s-1,D);const k=M.t-c.s;
+  let prevSame=0,prevTot=0;
+  for(let n=pc.s;n<=pc.e;n++){const d=M.daily.get(n);if(d){prevTot+=d.u;if(n-pc.s<=k)prevSame+=d.u;}}
+  const cmp=$("#cmpLine");
+  if(prevTot>0){
+    const nowSame=usedToDate+fcToDate;const pct=(nowSame-prevSame)/Math.max(prevSame,0.01)*100;
+    const up=pct>0;
+    cmp.innerHTML="เทียบช่วงเดียวกันรอบก่อน: <span class='delta "+(up?"up":"down")+"'>"+(up?"▲ ":"▼ ")+fmtN(Math.abs(pct))+"%</span> <span class='muted'>· รอบก่อนทั้งรอบ "+fmtN(prevTot)+" หน่วย ("+fmtB(billOf(prevTot))+")</span>";
+  }else cmp.innerHTML="<span class='muted'>ยังไม่มีข้อมูลรอบก่อนให้เปรียบเทียบ</span>";
+  // last chip
+  const chip=$("#lastChip");
+  if(M.last){
+    const ago=M.t-M.last.n;
+    chip.className="chip "+(ago<=2?"good":ago<=7?"":"warn");
+    chip.lastElementChild.textContent=ago===0?"จดแล้ววันนี้":"จดล่าสุด "+ago+" วันก่อน";
+    $("#lastRead").textContent="ล่าสุด "+fmtD(M.last.n,true);
+    const est=M.rate!=null&&ago>0?M.last.v+M.rate*ago:null;
+    $("#nowEst").textContent=est!=null?"ตอนนี้น่าจะอยู่ที่ประมาณ "+fmtN(est)+" (ใช้ไป ~"+fmtN(M.rate*ago)+" หน่วย ตั้งแต่จดล่าสุด)":"";
+  }else{chip.className="chip";chip.lastElementChild.textContent="ยังไม่เคยจด";$("#lastRead").textContent="";$("#nowEst").textContent="";}
+  renderOdo(M.last?M.last.v:0);
+  const mini=[];for(let n=M.t-13;n<=M.t;n++)mini.push(dayItem(M,n));
+  $("#miniChart").innerHTML=barChart(mini,{h:130,unit:"",labelEvery:2,avgLine:false});
+  updateHint();
+}
+function dayItem(M,n){
+  const d=M.daily.get(n);
+  if(d)return{v:d.u,kind:d.kind,label:String(ymd(n).d),title:fmtD(n,true)+": "+fmtN(d.u,1)+" หน่วย"+(d.kind==="est"?" (เฉลี่ย)":"")};
+  if(M.last&&n>M.last.n&&M.rate!=null&&n<=M.t)return{v:M.rate,kind:"fc",label:String(ymd(n).d),title:fmtD(n,true)+": ~"+fmtN(M.rate,1)+" หน่วย (ประมาณ)"};
+  return{v:0,kind:"none",label:String(ymd(n).d),title:fmtD(n,true)+": ไม่มีข้อมูล"};
+}
+function renderOdo(v){
+  const s=Math.floor(v).toString().padStart(5,"0");
+  const dec=Math.round((v-Math.floor(v))*10)%10;
+  $("#odo").innerHTML=s.split("").map(c=>"<span>"+c+"</span>").join("")+"<span class='dec'>"+dec+"</span>";
+}
+function niceMax(v){if(v<=0)return 1;const p=Math.pow(10,Math.floor(Math.log10(v)));const f=v/p;return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p;}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function barChart(items,o){
+  const W=380,H=o.h||220,padL=42,padR=8,padT=o.topLabels?22:10,padB=24;
+  const cw=W-padL-padR,ch=H-padT-padB;
+  const tot=it=>(it.v||0)+(it.v2||0);
+  const max=niceMax(Math.max(...items.map(tot),0.1)*1.05);
+  const n=items.length,slot=cw/n,bw=Math.max(2,Math.min(38,slot*0.72));
+  const y=v=>padT+ch-(v/max)*ch;
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria||"กราฟ")}">`;
+  for(let i=0;i<=4;i++){const v=max*i/4,yy=y(v);
+    s+=`<line x1="${padL}" x2="${W-padR}" y1="${yy}" y2="${yy}" stroke="var(--line)" stroke-width="1"/>`;
+    s+=`<text x="${padL-6}" y="${yy+4}" text-anchor="end" font-size="11" fill="var(--muted)">${o.fmtY?o.fmtY(v):fmtN(v,max<5?1:0)}</text>`;}
+  const col={act:"var(--accent)",est:"var(--est)",fc:"var(--fc)",none:"transparent"};
+  items.forEach((it,i)=>{
+    const x=padL+slot*i+(slot-bw)/2;
+    const h1=(it.v/max)*ch;
+    if(it.v>0)s+=`<rect x="${x}" y="${y(it.v)}" width="${bw}" height="${Math.max(h1,0.5)}" rx="${Math.min(3,bw/4)}" fill="${col[it.kind]}"><title>${esc(it.title||"")}</title></rect>`;
+    if(it.v2>0){const h2=(it.v2/max)*ch;s+=`<rect x="${x}" y="${y(it.v+it.v2)}" width="${bw}" height="${h2}" rx="${Math.min(3,bw/4)}" fill="var(--fc)" opacity=".75"><title>${esc(it.title||"")}</title></rect>`;}
+    if(it.kind==="none")s+=`<line x1="${x}" x2="${x+bw}" y1="${y(0)-1}" y2="${y(0)-1}" stroke="var(--muted)" stroke-dasharray="2 2"/>`;
+    if(i%(o.labelEvery||1)===0||i===n-1)s+=`<text x="${x+bw/2}" y="${H-7}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc(it.label)}</text>`;
+    if(o.topLabels&&tot(it)>0)s+=`<text x="${x+bw/2}" y="${y(tot(it))-5}" text-anchor="middle" font-size="10" font-weight="600" fill="var(--ink)">${esc(o.topLabels(it))}</text>`;
+  });
+  if(o.avgLine){const vals=items.filter(i=>i.kind!=="none"&&i.kind!=="fc").map(i=>i.v);if(vals.length){const a=vals.reduce((p,c)=>p+c,0)/vals.length;const yy=y(a);
+    s+=`<line x1="${padL}" x2="${W-padR}" y1="${yy}" y2="${yy}" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4"/>`;
+    s+=`<text x="${W-padR}" y="${yy-5}" text-anchor="end" font-size="11" fill="var(--muted)">เฉลี่ย ${fmtN(a,1)}</text>`;}}
+  return s+"</svg>";
+}
+function cycleList(M,count){
+  const D=Number(settings.cycleDay)||1;const out=[];let c=cycleOf(M.t,D);
+  const first=M.R.length?M.R[0].n:M.t;
+  for(let i=0;i<count;i++){if(c.s<first&&out.length)break;out.unshift(c);c=cycleOf(c.s-1,D);}
+  return out;
+}
+function renderCharts(M){
+  const items=[];for(let n=M.t-range+1;n<=M.t;n++)items.push(dayItem(M,n));
+  items.forEach((it,i)=>{const n=M.t-range+1+i;const o=ymd(n);it.label=o.d===1||i===0?o.d+" "+TH_MON[o.m]:String(o.d);});
+  $("#dailyChart").innerHTML=barChart(items,{h:200,labelEvery:range<=30?5:range<=60?10:15,avgLine:true,aria:"หน่วยไฟฟ้ารายวัน"});
+  const cyc=cycleList(M,12);
+  const ci=cyc.map((c,idx)=>{const st=cycleStats(M,c);const cur=idx===cyc.length-1;const lb=TH_MON[ymd(c.e).m];
+    const mul=cycUnit==="baht"?num(settings.rate):1;
+    const base=cycUnit==="baht"?(billOf(st.total)-st.fc*mul):st.act;
+    return{v:Math.max(0,base),v2:cur?st.fc*mul:0,kind:"act",label:lb,title:fmtD(c.s)+"–"+fmtD(c.e,true)+": "+fmtN(st.total)+" หน่วย / "+fmtB(billOf(st.total))+(cur?" (คาดการณ์)":"")};});
+  $("#cycleChart").innerHTML=ci.length?barChart(ci,{h:200,topLabels:it=>cycUnit==="baht"?fmtN(Math.round((it.v+(it.v2||0)))):fmtN(it.v+(it.v2||0)),fmtY:v=>fmtN(v),aria:"เปรียบเทียบรายรอบบิล"}):"<div class='muted small'>ยังไม่มีข้อมูล</div>";
+  // table
+  let h="<tr><th>รอบบิล</th><th style='text-align:right'>หน่วย</th><th style='text-align:right'>เฉลี่ย/วัน</th><th style='text-align:right'>บาท</th><th style='text-align:right'>เทียบรอบก่อน</th></tr>";
+  const rows=cyc.map(c=>{const st=cycleStats(M,c);return{c,st,days:c.e-c.s+1};});
+  rows.slice().reverse().forEach((r,i,arr)=>{
+    const prev=arr[i+1];let dlt="–";
+    if(prev&&prev.st.total>0){const p=(r.st.total-prev.st.total)/prev.st.total*100;dlt=`<span class="delta ${p>0?"up":"down"}">${p>0?"+":""}${fmtN(p)}%</span>`;}
+    const cur=i===0;
+    h+=`<tr><td>${fmtD(r.c.s)}–${fmtD(r.c.e,true)}${cur?" <span class='muted'>(คาด)</span>":""}</td><td class="n">${fmtN(r.st.total)}</td><td class="n">${fmtN(r.st.total/r.days,1)}</td><td class="n">${fmtN(billOf(r.st.total))}</td><td class="n">${dlt}</td></tr>`;
+  });
+  $("#cmpTable").innerHTML=h;
+}
+function renderHist(M){
+  const R=M.R;$("#histCount").textContent=R.length+" ครั้ง"+(demo?" (ตัวอย่าง)":"");
+  let h="";const list=R.slice().reverse();
+  list.slice(0,histShown).forEach((r,i)=>{
+    const prev=list[i+1];let u="",sub="";
+    if(prev){const gap=r.n-prev.n;const du=r.v-prev.v;
+      if(du<0){u="<span style='color:var(--bad)'>เลขลดลง</span>";sub="ตรวจสอบ/เปลี่ยนมิเตอร์?";}
+      else{u="+"+fmtN(du,du%1?1:0)+" หน่วย";sub=gap>1?gap+" วัน · "+fmtN(du/gap,1)+"/วัน":"1 วัน";}}
+    h+=`<div class="hrow"><div><div class="v">${fmtN(r.v,r.v%1?1:0)}</div><div class="d">${fmtD(r.n,true)}${r.note?" · "+esc(r.note):""}</div></div><div class="u">${u}<small>${sub}</small></div>${demo?"<span></span>":`<button type="button" class="xbtn ghost danger" data-del="${r.k}" aria-label="ลบ">ลบ</button>`}</div>`;
+  });
+  $("#histList").innerHTML=h||"<div class='muted small'>ยังไม่มีบันทึก</div>";
+  $("#moreBtn").hidden=list.length<=histShown;
+}
+
+// ---------- entry form ----------
+function updateHint(){
+  const hint=$("#fHint");const v=num($("#fVal").value);const dk=$("#fDate").value;
+  if(!dk||!isFinite(v)||demo){hint.textContent="";return;}
+  const n=fromKey(dk);const prev=[...readings].reverse().find(r=>r.n<n);
+  if(prev){const du=v-prev.v,gap=n-prev.n;
+    if(du<0){hint.innerHTML="<span style='color:var(--bad)'>น้อยกว่าครั้งก่อน ("+fmtN(prev.v)+" เมื่อ "+fmtD(prev.n)+") ตรวจเลขอีกครั้ง</span>";}
+    else hint.innerHTML="ใช้ไป <b>"+fmtN(du,1)+"</b> หน่วย ใน "+gap+" วัน ≈ "+fmtB(du*num(settings.rate))+(gap>1?" <span class='muted'>(เฉลี่ย "+fmtN(du/gap,1)+"/วัน)</span>":"");
+  }else hint.textContent="";
+  if(readings.some(r=>r.k===dk))hint.innerHTML+=" <span class='muted'>· วันนี้มีบันทึกแล้ว จะเขียนทับ</span>";
+}
+$("#fDate").value=key(todayDn());
+$("#fDate").max=key(todayDn());
+$("#fVal").addEventListener("input",updateHint);
+$("#fDate").addEventListener("change",updateHint);
+$("#entryForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const v=num($("#fVal").value),dk=$("#fDate").value;
+  if(!dk){toast("เลือกวันที่ก่อน");return;}
+  if(!isFinite(v)||v<0){toast("กรอกเลขมิเตอร์เป็นตัวเลข");$("#fVal").focus();return;}
+  $("#fSave").disabled=true;
+  try{await putReading(dk,v,$("#fNote").value.trim());$("#fVal").value="";$("#fNote").value="";toast("บันทึกแล้ว "+fmtD(fromKey(dk))+" · "+fmtN(v));}
+  catch(err){toast(err&&err.code==="invalid_argument"?"บัญชีนี้ไม่มีสิทธิ์บันทึก":"บันทึกไม่สำเร็จ ลองอีกครั้ง");}
+  $("#fSave").disabled=false;
+});
+
+// ---------- history delete (tap twice) ----------
+let pendingDel=null;
+$("#histList").addEventListener("click",async e=>{
+  const b=e.target.closest("[data-del]");if(!b)return;
+  const k=b.dataset.del;
+  if(pendingDel!==k){pendingDel=k;b.textContent="ยืนยัน?";setTimeout(()=>{if(pendingDel===k){pendingDel=null;b.textContent="ลบ";}},3000);return;}
+  pendingDel=null;
+  try{await delReading(k);toast("ลบแล้ว");}catch(err){toast("ลบไม่สำเร็จ");}
+});
+$("#moreBtn").addEventListener("click",()=>{histShown+=60;render();});
+
+// ---------- tabs ----------
+function go(tab){
+  document.querySelectorAll(".view").forEach(v=>{v.hidden=v.id!=="v-"+tab;v.style.display=v.hidden?"":"flex";});
+  document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-current",b.dataset.tab===tab?"page":"false"));
+  try{localStorage.setItem("meterlog.tab",tab);}catch(e){}
+  window.scrollTo(0,0);render();
+}
+document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click",()=>go(b.dataset.tab)));
+document.addEventListener("click",e=>{const g=e.target.closest("[data-go]");if(g)go(g.dataset.go);});
+$("#rangeSeg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;range=Number(b.dataset.r);$("#rangeSeg").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));render();});
+$("#unitSeg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;cycUnit=b.dataset.u;$("#unitSeg").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));render();});
+
+// ---------- settings ----------
+(function(){const s=$("#sCycle");for(let d=1;d<=28;d++){const o=document.createElement("option");o.value=d;o.textContent=d===1?"1 (ตามเดือนปฏิทิน)":String(d);s.appendChild(o);}})();
+function fillSettings(){$("#sRate").value=settings.rate;$("#sFee").value=settings.fee||"";$("#sCycle").value=settings.cycleDay;$("#sMin").value=settings.minCharge||"";}
+fillSettings();
+$("#setForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const s={rate:num($("#sRate").value),fee:num($("#sFee").value)||0,cycleDay:Number($("#sCycle").value)||1,minCharge:num($("#sMin").value)||0};
+  if(!isFinite(s.rate)||s.rate<=0){toast("ราคาต่อหน่วยต้องมากกว่า 0");return;}
+  try{await putSettings(s);toast("บันทึกการตั้งค่าแล้ว");}catch(err){toast("บันทึกไม่สำเร็จ");}
+});
+
+// ---------- import ----------
+let impRows=null;
+function parseDate(x){
+  if(x==null||x==="")return null;
+  if(x instanceof Date&&!isNaN(x))return dn(x.getFullYear(),x.getMonth(),x.getDate());
+  if(typeof x==="number"){ if(x>20000&&x<80000){const d=new Date(Math.round((x-25569)*DAY));return dn(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate());} return null;}
+  let s=String(x).trim().replace(/\s+/g," ");if(!s)return null;
+  const fixY=y=>{y=Number(y);if(y<100)y=y>=60?y+2500:y+2000;if(y>2400)y-=543;return y;};
+  let m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
+  if(m)return valid(fixY(m[1]),m[2]-1,+m[3]);
+  m=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/);
+  if(m)return valid(fixY(m[3]),m[2]-1,+m[1]);
+  // Thai/English month names
+  m=s.match(/^(\d{1,2})\s*[-\s]?\s*([^\d\s\-\/]+)\s*[-\s]?\s*(\d{2,4})/);
+  if(m){const nm=m[2].replace(/\s/g,"").toLowerCase();let mi=TH_MON.findIndex(t=>t.replace(/\./g,"")===nm.replace(/\./g,""));
+    if(mi<0)mi=TH_FULL.findIndex(t=>nm.startsWith(t)||t.startsWith(nm));
+    if(mi<0)mi=EN_MON.findIndex(t=>nm.startsWith(t));
+    if(mi>=0)return valid(fixY(m[3]),mi,+m[1]);}
+  return null;
+  function valid(y,mo,d){if(mo<0||mo>11||d<1||d>31||y<1990||y>2100)return null;return dn(y,mo,d);}
+}
+function loadTable(rows){
+  rows=rows.filter(r=>r&&r.some(c=>c!==""&&c!=null));
+  if(!rows.length){toast("ไม่พบข้อมูลในไฟล์");return;}
+  const width=Math.max(...rows.map(r=>r.length));
+  const hasHeader=rows[0].filter(c=>parseDate(c)!=null||isFinite(num(c))).length<rows[0].filter(c=>c!==""&&c!=null).length/2;
+  const header=hasHeader?rows[0]:null;const body=hasHeader?rows.slice(1):rows;
+  const colName=i=>header&&header[i]!=null&&header[i]!==""?String(header[i]):"คอลัมน์ "+String.fromCharCode(65+i);
+  const scoreD=[],scoreV=[];
+  for(let i=0;i<width;i++){scoreD[i]=body.filter(r=>parseDate(r[i])!=null).length;scoreV[i]=body.filter(r=>typeof r[i]!=="object"&&isFinite(num(r[i]))&&num(r[i])>=0&&!(r[i] instanceof Date)).length;}
+  let dCol=scoreD.indexOf(Math.max(...scoreD));
+  let vCol=-1,best=-1;for(let i=0;i<width;i++){if(i===dCol)continue;const nm=header?String(header[i]||""):"";const bonus=/มิเตอร์|meter|เลข|reading/i.test(nm)?1000:0;if(scoreV[i]+bonus>best){best=scoreV[i]+bonus;vCol=i;}}
+  const opts=Array.from({length:width},(_,i)=>`<option value="${i}">${esc(colName(i))}</option>`).join("");
+  $("#mDate").innerHTML=opts;$("#mVal").innerHTML=opts;$("#mDate").value=dCol;$("#mVal").value=Math.max(vCol,0);
+  impRows=body;
+  // guess mode: mostly non-decreasing and large → meter
+  const vals=body.map(r=>num(r[vCol])).filter(isFinite);
+  let inc=0;for(let i=1;i<vals.length;i++)if(vals[i]>=vals[i-1])inc++;
+  $("#mMode").value=vals.length>2&&inc/(vals.length-1)>0.8&&vals[vals.length-1]>vals[0]?"meter":(vals.length>2?"units":"meter");
+  $("#impMap").hidden=false;$("#impMap").style.display="flex";
+  previewImport();
+}
+function buildImport(){
+  if(!impRows)return[];
+  const dc=+$("#mDate").value,vc=+$("#mVal").value,md=$("#mMode").value;
+  let out=impRows.map(r=>({n:parseDate(r[dc]),v:num(r[vc])})).filter(r=>r.n!=null&&isFinite(r.v));
+  out.sort((a,b)=>a.n-b.n);
+  const map=new Map();
+  if(md==="units"){let acc=num($("#mBase").value)||0;
+    // put base reading the day before first
+    if(out.length)map.set(out[0].n-1,acc);
+    out.forEach(r=>{acc+=r.v;map.set(r.n,Math.round(acc*10)/10);});
+  }else out.forEach(r=>map.set(r.n,r.v));
+  return [...map.entries()].sort((a,b)=>a[0]-b[0]).map(([n,v])=>({n,k:key(n),v}));
+}
+function previewImport(){
+  $("#mBaseWrap").hidden=$("#mMode").value!=="units";
+  const list=buildImport();const skipped=impRows.length-list.length+($("#mMode").value==="units"&&list.length?1:0);
+  const ov=list.filter(r=>readings.some(x=>x.k===r.k)).length;
+  $("#impSummary").innerHTML=list.length?`พบ <b>${list.length}</b> รายการ ตั้งแต่ ${fmtD(list[0].n,true)} ถึง ${fmtD(list[list.length-1].n,true)}`+(skipped>0?` · ข้าม ${skipped} แถวที่อ่านไม่ได้`:"")+(ov?` · <span style="color:var(--warn)">ทับวันที่มีอยู่แล้ว ${ov} วัน</span>`:""):"<span style='color:var(--bad)'>อ่านวันที่หรือตัวเลขไม่ได้ ลองเปลี่ยนคอลัมน์</span>";
+  let h="<tr><th>วันที่</th><th style='text-align:right'>เลขมิเตอร์</th><th style='text-align:right'>ใช้ไป</th></tr>";
+  list.slice(0,8).forEach((r,i)=>{const d=i?r.v-list[i-1].v:null;h+=`<tr><td>${fmtD(r.n,true)}</td><td class="n">${fmtN(r.v,r.v%1?1:0)}</td><td class="n">${d==null?"–":fmtN(d,1)}</td></tr>`;});
+  if(list.length>8)h+=`<tr><td colspan="3" class="muted">… อีก ${list.length-8} รายการ</td></tr>`;
+  $("#impPreview").innerHTML=h;$("#impGo").disabled=!list.length;
+}
+["#mDate","#mVal","#mMode","#mBase"].forEach(s=>$(s).addEventListener(s==="#mBase"?"input":"change",previewImport));
+$("#impFile").addEventListener("change",async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{
+    const buf=await f.arrayBuffer();
+    if(/\.(csv|txt)$/i.test(f.name)){let t=new TextDecoder("utf-8").decode(buf);if(t.includes("\uFFFD"))t=new TextDecoder("windows-874").decode(buf);loadTable(parseText(t));}
+    else{if(!window.XLSX){toast("โหลดตัวอ่าน Excel ไม่ได้ ลองบันทึกเป็น CSV");return;}
+      const wb=XLSX.read(buf,{type:"array",cellDates:true});const ws=wb.Sheets[wb.SheetNames[0]];
+      loadTable(XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:""}));}
+  }catch(err){toast("อ่านไฟล์ไม่ได้");}
+});
+function parseText(t){
+  t=t.replace(/^﻿/,"");
+  const lines=t.split(/\r?\n/).filter(l=>l.trim());
+  const sep=lines.some(l=>l.includes("\t"))?"\t":lines.some(l=>l.includes(";"))&&!lines.some(l=>l.includes(","))?";":null;
+  return lines.map(l=>{
+    if(sep)return l.split(sep).map(c=>c.trim().replace(/^"|"$/g,""));
+    const cells=[];let cur="",q=false;
+    for(const ch of l){if(ch==='"'){q=!q;continue;}if(ch===","&&!q){cells.push(cur.trim());cur="";}else cur+=ch;}
+    cells.push(cur.trim());
+    if(cells.length===1)return l.trim().split(/\s{2,}|\s(?=[\d.,]+$)/);
+    return cells;
+  });
+}
+$("#impParseText").addEventListener("click",()=>{const t=$("#impText").value;if(!t.trim()){toast("วางข้อความก่อน");return;}loadTable(parseText(t));});
+$("#impGo").addEventListener("click",async()=>{
+  const list=buildImport();if(!list.length)return;
+  const b=$("#impGo");b.disabled=true;let ok=0;
+  try{
+    b.textContent="กำลังนำเข้า "+list.length+" รายการ…";
+    applyData(await gs("importReadings",list.map(r=>({k:r.k,v:r.v,note:"นำเข้า"}))));ok=list.length;
+    toast("นำเข้าแล้ว "+ok+" รายการ");$("#impMap").hidden=true;$("#impMap").style.display="";impRows=null;$("#impFile").value="";$("#impText").value="";
+    render();go("charts");
+  }catch(err){toast("นำเข้าได้ "+ok+" รายการ แล้วหยุด ลองกดอีกครั้ง");}
+  b.disabled=false;b.textContent="นำเข้า";
+});
+
+// ---------- export ----------
+function csv(){let s="﻿date,meter,note\n";readings.forEach(r=>{s+=r.k+","+r.v+","+JSON.stringify(r.note||"")+"\n";});return s;}
+async function copyText(){try{await navigator.clipboard.writeText(csv());toast("คัดลอกแล้ว วางใน Excel ได้เลย");}catch(e){$("#impText").value=csv();document.querySelector("details").open=true;$("#impText").select();toast("เลือกข้อความให้แล้ว กดคัดลอกเอง");}}
+$("#copyBtn").addEventListener("click",()=>{if(!readings.length){toast("ยังไม่มีข้อมูล");return;}copyText();});
+
+// ---------- wipe ----------
+let wipeArm=false;
+$("#wipeBtn").addEventListener("click",async()=>{
+  const b=$("#wipeBtn");
+  if(!wipeArm){wipeArm=true;b.textContent="กดอีกครั้งเพื่อยืนยันลบ "+readings.length+" รายการ";setTimeout(()=>{wipeArm=false;b.textContent="ลบข้อมูลทั้งหมด";},4000);return;}
+  wipeArm=false;b.disabled=true;
+  try{applyData(await gs("wipeAll"));toast("ลบข้อมูลแล้ว");}catch(e){toast("ลบไม่ครบ ลองอีกครั้ง");}
+  b.disabled=false;b.textContent="ลบข้อมูลทั้งหมด";
+});
+
+// ---------- toast ----------
+let tt;function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,2600);}
+
+let startTab="home";try{startTab=localStorage.getItem("meterlog.tab")||"home";}catch(e){}
+if(!["home","charts","hist","set"].includes(startTab))startTab="home";
+go(startTab);
+init();
+})();
+</script>
+
+</body>
+</html>
