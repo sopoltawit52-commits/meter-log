@@ -1,5 +1,5 @@
 // มิเตอร์ห้องเรา — service worker: เปิดหน้าได้แม้ไม่มีเน็ต
-const CACHE = 'meterlog-v1';
+const CACHE = 'meterlog-v2';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
