@@ -1,6 +1,8 @@
 /**
- * มิเตอร์ห้องเรา — Google Apps Script web app
- * วางโค้ดนี้ในไฟล์ Code.gs ของ Apps Script ที่ผูกกับ Google Sheet ค่าไฟ
+ * มิเตอร์ห้องเรา — Google Apps Script API (backend)
+ * หน้าเว็บอยู่ที่ GitHub Pages แล้วเรียก API นี้ด้วย POST (text/plain JSON)
+ *   body: { "pin": "...", "action": "getData|saveReading|deleteReading|saveSettings|importReadings|wipeAll", "args": [...] }
+ *   PIN เก็บใน Script Properties ชื่อ PIN (ไม่ได้อยู่ในโค้ด)
  *
  * ชีตที่ใช้ (สร้างให้อัตโนมัติ):
  *   Readings : วันที่ (yyyy-mm-dd) | เลขมิเตอร์ | หมายเหตุ | บันทึกเมื่อ
@@ -13,11 +15,46 @@ const OLD_SHEET = 'บันทึกรายวัน';          // ชีต�
 const AUTO_FILL_NOTE = 'เติมเฉลี่ยอัตโนมัติ'; // แถวที่เคยเติมเฉลี่ย จะไม่ถูกย้าย
 const DEFAULTS = { rate: 5, fee: 0, cycleDay: 1, minCharge: 0 };
 
-// ---------- web app ----------
+// ---------- web API ----------
+const ACTIONS = {
+  getData: () => getData(),
+  saveReading: (k, v, note) => saveReading(k, v, note),
+  deleteReading: (k) => deleteReading(k),
+  saveSettings: (st) => saveSettings(st),
+  importReadings: (list) => importReadings(list),
+  wipeAll: () => wipeAll()
+};
+
+function json_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function checkPin_(pin) {
+  const want = PropertiesService.getScriptProperties().getProperty('PIN');
+  if (!want) throw new Error('ยังไม่ได้ตั้ง PIN ใน Script Properties');
+  return String(pin || '') === want;
+}
+
+function doPost(e) {
+  try {
+    const req = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    if (!checkPin_(req.pin)) return json_({ ok: false, error: 'bad_pin' });
+    const fn = ACTIONS[req.action];
+    if (!fn) return json_({ ok: false, error: 'unknown_action' });
+    const data = fn.apply(null, Array.isArray(req.args) ? req.args : []);
+    return json_({ ok: true, data: data });
+  } catch (err) {
+    return json_({ ok: false, error: String(err && err.message || err) });
+  }
+}
+
 function doGet() {
-  return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('มิเตอร์ห้องเรา')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
+  return json_({ ok: true, app: 'meter-log', hint: 'use POST' });
+}
+
+// รันครั้งเดียวจาก editor เพื่อตั้ง PIN (แก้ค่าก่อนรัน แล้วลบค่าออกก่อน commit)
+function setPin() {
+  PropertiesService.getScriptProperties().setProperty('PIN', 'CHANGE_ME');
 }
 
 // ---------- menu in the spreadsheet ----------
@@ -125,7 +162,7 @@ function upsert_(list) {
 
 // ---------- API called from Index.html ----------
 function getData() {
-  return { readings: readMap_(), settings: readSettings_(), sheetUrl: ss_().getUrl() };
+  return { readings: readMap_(), settings: readSettings_() };
 }
 
 function saveReading(k, v, note) {
