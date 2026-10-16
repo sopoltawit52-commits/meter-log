@@ -184,6 +184,7 @@ details summary{cursor:pointer;font-weight:600}
         <label>หมายเหตุ (ไม่บังคับ)<input id="fNote" type="text" placeholder="เช่น เปิดแอร์ทั้งคืน, ไม่อยู่ห้อง 3 วัน"></label>
         <label class="check"><input type="checkbox" id="fReset"> เปลี่ยนมิเตอร์ใหม่ / เลขเริ่มนับใหม่</label>
         <div class="small" id="fHint" aria-live="polite"></div>
+        <div class="banner row between" id="editBar" hidden><span id="editTxt"></span><button type="button" class="xbtn" id="editCancel">ยกเลิกแก้ไข</button></div>
         <button class="primary" type="submit" id="fSave">บันทึก</button>
       </form>
     </div>
@@ -309,6 +310,7 @@ details summary{cursor:pointer;font-weight:600}
         <li>ไม่ต้องจดทุกวัน ระบบจะเฉลี่ยหน่วยตาม<b>ชั่วโมงจริง</b>ระหว่างสองครั้งที่จด (แถบสีอ่อนในกราฟ) จึงควรใส่เวลาที่จดให้ตรง</li>
         <li>ช่วงหลังจดครั้งล่าสุดจะประมาณจากอัตราใช้ 14 วันล่าสุด (แถบสีส้ม) ยอดเงินคาดการณ์จึงยังขึ้นเสมอ</li>
         <li>แนะนำจดอย่างน้อย <b>สัปดาห์ละครั้ง</b> และ <b>วันตัดรอบบิล</b> เพื่อให้ยอดตรงกับบิลหอ</li>
+        <li>จดได้หลายครั้งต่อวัน และแตะ “แก้” ในแท็บประวัติเพื่อแก้เลข เวลา หรือหมายเหตุที่จดผิด</li>
         <li>ไม่มีเน็ตก็บันทึกได้ ระบบเก็บไว้ในเครื่องแล้วส่งขึ้นชีตให้เองเมื่อกลับมาออนไลน์</li>
         <li>ย้ายหอ: ไปที่ “ย้ายที่พัก” จดเลขสุดท้ายของห้องเดิมและเลขแรกของห้องใหม่ ประวัติเดิมยังอยู่ครบ</li>
         <li>เพิ่มหน้านี้ไว้ที่หน้าจอหลัก (แชร์ → เพิ่มลงหน้าจอโฮม)</li>
@@ -338,9 +340,8 @@ details summary{cursor:pointer;font-weight:600}
         <button type="button" class="primary" id="impGo">นำเข้า</button>
       </div>
       <hr>
-      <h2>ล้างข้อมูล</h2>
-      <div class="small muted">ลบบันทึกทั้งหมด ใช้เมื่อนำเข้าผิดและต้องการเริ่มใหม่</div>
-      <button type="button" class="danger" id="wipeBtn">ลบข้อมูลทั้งหมด</button>
+      <h2>ล้างข้อมูล / สำรองข้อมูล</h2>
+      <div class="small muted">เพื่อความปลอดภัย แอปลบข้อมูลทั้งหมดไม่ได้ ถ้าจำเป็นให้ลบเองในชีต “Readings” ของ Google Sheets · ระบบสำรองข้อมูลให้อัตโนมัติทุก 7 วัน (ชีตซ่อนชื่อ “Backup …” เก็บ 4 ชุดล่าสุด)</div>
     </details>
   </section>
 </div>
@@ -416,7 +417,8 @@ async function gs(action,...args){
       r=await resp.json();
     }catch(e){const er=new Error(navigator.onLine===false?"ไม่มีอินเทอร์เน็ต":"ติดต่อเซิร์ฟเวอร์ไม่ได้");er.offline=true;throw er;}
     if(r.ok)return r.data;
-    if(r.error==="bad_pin"){pin="";lsSet(PIN_KEY,null);await askPin("PIN ไม่ถูกต้อง ลองใหม่");continue;}
+    if(r.error==="bad_pin"){pin="";lsSet(PIN_KEY,null);await askPin("PIN ไม่ถูกต้อง ลองใหม่ (ผิดครบ 5 ครั้งจะล็อก 15 นาที)");continue;}
+    if(r.error==="locked"){const er=new Error("ใส่ PIN ผิดหลายครั้ง ระบบล็อกไว้ "+(r.minutes||15)+" นาที ลองใหม่ภายหลัง");er.locked=true;throw er;}
     throw new Error(r.error||"เกิดข้อผิดพลาด");
   }
   throw new Error("PIN ไม่ถูกต้อง");
@@ -425,10 +427,13 @@ async function gs(action,...args){
 // ---------- offline queue ----------
 const getQueue=()=>{try{return JSON.parse(lsGet(QUEUE_KEY)||"[]")||[];}catch(e){return[];}};
 const setQueue=q=>lsSet(QUEUE_KEY,q.length?JSON.stringify(q):null);
+const rid=(k,t)=>k+"|"+(t||"");
+function mkReading(k,o){const t=o.t||"";const n=fromKey(k);
+  return{id:rid(k,t),k,n,x:n+(hmToF(t)??hmToF(DEFAULT_TIME)),v:Number(o.v),note:o.note||"",t,reset:!!o.reset};}
 function upsertLocal(o){
-  const t=o.t||"";const n=fromKey(o.k);
-  const r={k:o.k,n,x:n+(hmToF(t)??hmToF(DEFAULT_TIME)),v:Number(o.v),note:o.note||"",t,reset:!!o.reset,pending:!!o.pending};
-  const i=readings.findIndex(x=>x.k===o.k);if(i>=0)readings[i]=r;else readings.push(r);
+  const r=mkReading(o.k,o);r.pending=!!o.pending;
+  if(o.origK){const oi=readings.findIndex(x=>x.id===rid(o.origK,o.origT));if(oi>=0)readings.splice(oi,1);}
+  const i=readings.findIndex(x=>x.id===r.id||(!o.t&&x.k===o.k));if(i>=0)readings[i]=r;else readings.push(r);
   readings.sort((a,b)=>a.x-b.x);
 }
 function applyQueueOverlay(){getQueue().forEach(o=>upsertLocal({...o,pending:true}));}
@@ -442,7 +447,7 @@ async function flushQueue(){
   if(flushing)return;let q=getQueue();if(!q.length)return;
   flushing=true;let data=null;
   try{
-    while(q.length){const o=q[0];data=await gs("saveReading",o.k,o.v,o.note||"",o.t||"",!!o.reset);q.shift();setQueue(q);}
+    while(q.length){const o=q[0];data=await gs("saveReading",o.k,o.v,o.note||"",o.t||"",!!o.reset,o.origK||"",o.origT||"");q.shift();setQueue(q);}
     toast("ส่งรายการที่ค้างขึ้นชีตแล้ว");
   }catch(e){}finally{flushing=false;}
   if(data)applyData(data);else updateQueueBanner();
@@ -450,7 +455,8 @@ async function flushQueue(){
 
 function applyData(d,fromCache){
   if(!d)return;
-  setReadingsFromMap(d.readings||{});
+  if(Array.isArray(d.readingList))readings=d.readingList.map(o=>mkReading(o.k,o)).filter(r=>isFinite(r.v)).sort((a,b)=>a.x-b.x);
+  else setReadingsFromMap(d.readings||{});
   settings={...DEFAULTS,...(d.settings||{})};
   bills=d.bills||{};triggerOk=!!d.triggerOk;
   setPlaces(d.places);
@@ -460,19 +466,17 @@ function applyData(d,fromCache){
     $("#syncState").textContent="เก็บใน Google Sheets · อัปเดต "+new Date().toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});}
 }
 function setReadingsFromMap(map){
-  readings=Object.entries(map).map(([k,o])=>{const n=fromKey(k);const t=o.t||"";
-    return{k,n,x:n+(hmToF(t)??hmToF(DEFAULT_TIME)),v:Number(o.v),note:o.note||"",t,reset:!!o.reset};})
-    .filter(r=>isFinite(r.v)).sort((a,b)=>a.x-b.x);
+  readings=Object.entries(map).map(([k,o])=>mkReading(k,o)).filter(r=>isFinite(r.v)).sort((a,b)=>a.x-b.x);
 }
 async function putReading(o){
-  try{applyData(await gs("saveReading",o.k,o.v,o.note||"",o.t||"",!!o.reset));return "ok";}
+  try{applyData(await gs("saveReading",o.k,o.v,o.note||"",o.t||"",!!o.reset,o.origK||"",o.origT||""));return "ok";}
   catch(e){
     if(!e.offline)throw e;
-    const q=getQueue().filter(x=>x.k!==o.k);q.push(o);setQueue(q);
+    const q=getQueue().filter(x=>rid(x.k,x.t)!==rid(o.k,o.t));q.push(o);setQueue(q);
     upsertLocal({...o,pending:true});render();updateQueueBanner();return "queued";
   }
 }
-async function delReading(k){applyData(await gs("deleteReading",k));}
+async function delReading(k,t){applyData(await gs("deleteReading",k,t||""));}
 async function putSettings(s){applyData(await gs("saveSettings",s));}
 async function refresh(){
   try{$("#syncState").textContent="กำลังซิงก์…";await flushQueue();applyData(await gs("getData"));}
@@ -521,7 +525,7 @@ function model(){
   const rateIn=(x0,x1)=>{let u=0,len=0;iv.forEach(s=>{const o=Math.min(s.x1,x1)-Math.max(s.x0,x0);if(o>0){u+=s.u*o/(s.x1-s.x0);len+=o;}});return len>0?u/len:null;};
   const groups=places.map(()=>[]);
   R.forEach(r=>{r.pi=placeIdx(r.n);groups[r.pi].push(r);});
-  places.forEach((p,i)=>{if(p.ox!=null)groups[i].push({k:"out"+i,n:Math.floor(p.ox),x:p.ox,v:Number(p.outV),t:p.outT||"",note:"",pseudo:true,pi:i});groups[i].sort((a,b)=>a.x-b.x);});
+  places.forEach((p,i)=>{if(p.ox!=null)groups[i].push({k:"out"+i,id:"out"+i,n:Math.floor(p.ox),x:p.ox,v:Number(p.outV),t:p.outT||"",note:"",pseudo:true,pi:i});groups[i].sort((a,b)=>a.x-b.x);});
   const rows=[];
   groups.forEach((g,gi)=>{
     g.forEach((b,i)=>{
@@ -530,7 +534,7 @@ function model(){
       let u=b.v-a.v,est=span>1.5,kind="norm";
       if(b.reset){const r=rateIn(a.x-14,a.x);u=r==null?0:r*span;est=true;kind="reset";}
       else if(u<0){issues.add(b.k);const r=rateIn(a.x-14,a.x);u=r==null?0:r*span;est=true;kind="drop";}
-      iv.push({x0:a.x,x1:b.x,u,est,kind,to:b.k});
+      iv.push({x0:a.x,x1:b.x,u,est,kind,to:b.id});
     });
   });
   const cg=groups[groups.length-1].filter(r=>!r.pseudo);
@@ -748,14 +752,14 @@ function renderHist(M){
   const R=M.R;$("#histCount").textContent=R.length+" ครั้ง"+(places.length>1?" · "+places.length+" ที่พัก":"");
   let h="";const list=M.rows.slice().reverse();
   list.slice(0,histShown).forEach(r=>{
-    const prev=r.prev;let u="",sub="";const s=M.ivTo.get(r.k);
+    const prev=r.prev;let u="",sub="";const s=M.ivTo.get(r.id);
     if(r.firstOfPlace){u="<span class='tag'>ย้ายเข้า</span>";sub="เริ่มนับที่พักใหม่";}
     else if(prev){const gap=r.x-prev.x;const du=r.v-prev.v;
       if(r.reset){u="<span class='tag'>เริ่มมิเตอร์ใหม่</span>";sub=s?"ช่วงเปลี่ยน ~"+fmtN(s.u,1)+" หน่วย (ประมาณ)":"";}
       else if(du<0){u="<span style='color:var(--bad)'>เลขลดลง</span>";sub="ตรวจเลข หรือติ๊ก “เปลี่ยนมิเตอร์”";}
       else{u="+"+fmtN(du,du%1?1:0)+" หน่วย";sub=fmtGap(gap)+(gap>=0.5?" · "+fmtN(du/gap,1)+"/วัน":"");}}
     const label=r.pseudo?" <span class='tag'>ย้ายออก "+esc(places[r.pi].name)+"</span>":(r.pending?" <span class='tag'>รอส่ง</span>":"");
-    const btn=r.pseudo||r.pending||r.firstOfPlace?"<span></span>":`<button type="button" class="xbtn ghost danger" data-del="${r.k}" aria-label="ลบ">ลบ</button>`;
+    const btn=r.pseudo||r.pending||r.firstOfPlace?"<span></span>":`<span class="row" style="gap:4px;flex-wrap:nowrap"><button type="button" class="xbtn ghost" data-edit="${esc(r.id)}" aria-label="แก้">แก้</button><button type="button" class="xbtn ghost danger" data-del="${esc(r.id)}" aria-label="ลบ">ลบ</button></span>`;
     h+=`<div class="hrow"><div><div class="v">${fmtN(r.v,r.v%1?1:0)}${label}</div><div class="d">${fmtD(r.n,true)}${r.t?" · "+r.t:""}${r.note?" · "+esc(r.note):""}</div></div><div class="u">${u}<small>${sub}</small></div>${btn}</div>`;
   });
   $("#histList").innerHTML=h||"<div class='muted small'>ยังไม่มีบันทึก</div>";
@@ -763,13 +767,13 @@ function renderHist(M){
 }
 
 // ---------- entry form ----------
-let spikeArmed=false;
+let spikeArmed=false;let editId=null;
 function entryCheck(){
   const v=num($("#fVal").value);const dk=$("#fDate").value;const tm=$("#fTime").value||DEFAULT_TIME;
   if(!dk||!isFinite(v))return null;
   const x=fromKey(dk)+hmToF(tm);const pi=placeIdx(fromKey(dk));const P=places[pi];
   const pool=readings.filter(r=>placeIdx(r.n)===pi).concat(P.ox!=null?[{x:P.ox,v:Number(P.outV),n:Math.floor(P.ox),k:"out"}]:[]);
-  const prev=pool.filter(r=>r.x<x&&r.k!==dk).sort((a,b)=>b.x-a.x)[0];
+  const prev=pool.filter(r=>r.x<x&&r.id!==editId).sort((a,b)=>b.x-a.x)[0];
   if(!prev)return{x};
   const du=v-prev.v,gap=x-prev.x;const M=model();
   const perDay=gap>0?du/gap:0;
@@ -777,7 +781,7 @@ function entryCheck(){
   return{x,prev,du,gap,perDay,spike,drop:du<0&&!$("#fReset").checked,rate:M.rate};
 }
 function updateHint(){
-  const hint=$("#fHint");const c=entryCheck();spikeArmed=false;$("#fSave").textContent="บันทึก";
+  const hint=$("#fHint");const c=entryCheck();spikeArmed=false;$("#fSave").textContent=editId?"บันทึกการแก้ไข":"บันทึก";
   if(!c){hint.textContent="";return;}
   const dk=$("#fDate").value;let h="";
   if(c.prev){
@@ -786,7 +790,10 @@ function updateHint(){
     else{h="ใช้ไป <b>"+fmtN(c.du,1)+"</b> หน่วย ใน "+fmtGap(c.gap)+" ≈ "+fmtB(c.du*num(places[placeIdx(fromKey(dk))].rate))+(c.gap>=0.5?" <span class='muted'>(เฉลี่ย "+fmtN(c.perDay,1)+"/วัน)</span>":"");
       if(c.spike)h+="<br><span style='color:var(--warn)'>⚠ สูงกว่าปกติ ~"+fmtN(c.perDay/c.rate,1)+" เท่า (ปกติ "+fmtN(c.rate,1)+"/วัน) ตรวจว่ากดเลขเกินหรือไม่</span>";}
   }
-  if(readings.some(r=>r.k===dk))h+=" <span class='muted'>· วันนี้มีบันทึกแล้ว จะเขียนทับ</span>";
+  const tm=$("#fTime").value;const same=readings.find(r=>r.id===rid(dk,tm)&&r.id!==editId);
+  const nDay=readings.filter(r=>r.k===dk&&r.id!==editId).length;
+  if(same)h+=" <span style='color:var(--warn)'>· มีบันทึกเวลา "+tm+" ของวันนี้แล้ว จะเขียนทับ</span>";
+  else if(nDay)h+=" <span class='muted'>· วันนี้จดไปแล้ว "+nDay+" ครั้ง (จดเพิ่มได้)</span>";
   hint.innerHTML=h;
 }
 function resetEntryDefaults(){$("#fDate").value=key(todayDn());$("#fTime").value=nowHM();}
@@ -796,7 +803,7 @@ $("#fDate").max=key(todayDn());
 $("#fDate").addEventListener("change",updateHint);
 $("#fReset").addEventListener("change",updateHint);
 // เมื่อกลับมาเปิดแอป ถ้ายังไม่ได้พิมพ์อะไร ให้วันที่/เวลาเป็นปัจจุบัน
-document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&!$("#fVal").value){resetEntryDefaults();$("#fDate").max=key(todayDn());}});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&!$("#fVal").value&&!editId){resetEntryDefaults();$("#fDate").max=key(todayDn());}});
 $("#entryForm").addEventListener("submit",async e=>{
   e.preventDefault();
   const v=num($("#fVal").value),dk=$("#fDate").value,tm=$("#fTime").value;
@@ -806,22 +813,36 @@ $("#entryForm").addEventListener("submit",async e=>{
   if(c&&(c.spike||c.drop)&&!spikeArmed){spikeArmed=true;$("#fSave").textContent=c.drop?"ยืนยันบันทึก (เลขลดลง)":"ยืนยันบันทึก (เลขสูงผิดปกติ)";toast("ตรวจเลขอีกครั้ง แล้วกดยืนยัน");return;}
   $("#fSave").disabled=true;
   const o={k:dk,v,note:$("#fNote").value.trim(),t:tm||"",reset:$("#fReset").checked};
+  const wasEdit=!!editId;
+  if(editId){const er=readings.find(r=>r.id===editId);if(er){o.origK=er.k;o.origT=er.t||"";}}
   try{
     const res=await putReading(o);
-    $("#fVal").value="";$("#fNote").value="";$("#fReset").checked=false;resetEntryDefaults();
-    toast(res==="queued"?"ยังไม่มีเน็ต บันทึกไว้ในเครื่องแล้ว จะส่งให้อัตโนมัติ":"บันทึกแล้ว "+fmtD(fromKey(dk))+" "+(tm||"")+" · "+fmtN(v));
+    $("#fVal").value="";$("#fNote").value="";$("#fReset").checked=false;endEdit();
+    toast(res==="queued"?"ยังไม่มีเน็ต บันทึกไว้ในเครื่องแล้ว จะส่งให้อัตโนมัติ":(wasEdit?"แก้ไขแล้ว ":"บันทึกแล้ว ")+fmtD(fromKey(dk))+" "+(tm||"")+" · "+fmtN(v));
   }catch(err){toast("บันทึกไม่สำเร็จ: "+(err&&err.message||"ลองอีกครั้ง"));}
   $("#fSave").disabled=false;updateHint();
 });
 
 // ---------- history delete (tap twice) ----------
 let pendingDel=null;
+function startEdit(id){
+  const r=readings.find(x=>x.id===id);if(!r)return;
+  editId=id;go("home");
+  $("#fDate").value=r.k;$("#fTime").value=r.t||DEFAULT_TIME;$("#fVal").value=String(r.v);$("#fNote").value=r.note||"";$("#fReset").checked=!!r.reset;
+  $("#editTxt").innerHTML="กำลังแก้บันทึก <b>"+fmtD(r.n,true)+(r.t?" "+r.t:"")+"</b> · เลข "+fmtN(r.v,r.v%1?1:0);
+  $("#editBar").hidden=false;updateHint();
+  $("#entryForm").scrollIntoView({behavior:"smooth",block:"center"});setTimeout(()=>$("#fVal").focus(),300);
+}
+function endEdit(){editId=null;$("#editBar").hidden=true;resetEntryDefaults();updateHint();}
+$("#editCancel").addEventListener("click",()=>{$("#fVal").value="";$("#fNote").value="";$("#fReset").checked=false;endEdit();});
 $("#histList").addEventListener("click",async e=>{
+  const ed=e.target.closest("[data-edit]");if(ed){startEdit(ed.dataset.edit);return;}
   const b=e.target.closest("[data-del]");if(!b)return;
-  const k=b.dataset.del;
-  if(pendingDel!==k){pendingDel=k;b.textContent="ยืนยัน?";setTimeout(()=>{if(pendingDel===k){pendingDel=null;b.textContent="ลบ";}},3000);return;}
-  pendingDel=null;
-  try{await delReading(k);toast("ลบแล้ว");}catch(err){toast("ลบไม่สำเร็จ");}
+  const id=b.dataset.del;
+  if(pendingDel!==id){pendingDel=id;b.textContent="ยืนยัน?";setTimeout(()=>{if(pendingDel===id){pendingDel=null;b.textContent="ลบ";}},3000);return;}
+  pendingDel=null;const r=readings.find(x=>x.id===id);if(!r)return;
+  if(editId===id){$("#fVal").value="";$("#fNote").value="";endEdit();}
+  try{await delReading(r.k,r.t);toast("ลบแล้ว");}catch(err){toast(err.offline?"ต้องมีเน็ตเพื่อลบ":"ลบไม่สำเร็จ");}
 });
 $("#moreBtn").addEventListener("click",()=>{histShown+=60;render();});
 
@@ -1034,19 +1055,9 @@ $("#impGo").addEventListener("click",async()=>{
 });
 
 // ---------- export ----------
-function csv(){let s="﻿date,meter,note\n";readings.forEach(r=>{s+=r.k+","+r.v+","+JSON.stringify(r.note||"")+"\n";});return s;}
+function csv(){let s="﻿date,time,meter,note\n";readings.forEach(r=>{s+=r.k+","+(r.t||"")+","+r.v+","+JSON.stringify(r.note||"")+"\n";});return s;}
 async function copyText(){try{await navigator.clipboard.writeText(csv());toast("คัดลอกแล้ว วางใน Excel ได้เลย");}catch(e){$("#impText").value=csv();$("details.adv").open=true;$("#pasteBox").open=true;$("#impText").select();toast("เลือกข้อความให้แล้ว กดคัดลอกเอง");}}
 $("#copyBtn").addEventListener("click",()=>{if(!readings.length){toast("ยังไม่มีข้อมูล");return;}copyText();});
-
-// ---------- wipe ----------
-let wipeArm=false;
-$("#wipeBtn").addEventListener("click",async()=>{
-  const b=$("#wipeBtn");
-  if(!wipeArm){wipeArm=true;b.textContent="กดอีกครั้งเพื่อยืนยันลบ "+readings.length+" รายการ";setTimeout(()=>{wipeArm=false;b.textContent="ลบข้อมูลทั้งหมด";},4000);return;}
-  wipeArm=false;b.disabled=true;
-  try{applyData(await gs("wipeAll"));toast("ลบข้อมูลแล้ว");}catch(e){toast("ลบไม่ครบ ลองอีกครั้ง");}
-  b.disabled=false;b.textContent="ลบข้อมูลทั้งหมด";
-});
 
 // ---------- toast ----------
 let tt;function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,2600);}
