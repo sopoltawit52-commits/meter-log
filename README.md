@@ -35,6 +35,39 @@
 
 ทุกครั้งที่แก้โค้ด ต้องไปที่ **Deploy → จัดการการทำให้ใช้งานได้ → แก้ไข → เวอร์ชันใหม่**
 
+## ซิงก์ GitHub ↔ Apps Script อัตโนมัติ
+
+ให้ GitHub เป็นต้นฉบับ แก้โค้ดใน `apps-script/` แล้ว push ขึ้น `main` จากนั้น workflow **Deploy to Apps Script** จะทำงานเอง:
+
+1. `clasp push` อัปโหลดโค้ดไปที่โปรเจกต์ Apps Script
+2. `clasp deploy` อัปเดต deployment เดิม ลิงก์ `/exec` จึงไม่เปลี่ยน
+
+ถ้าแก้โค้ดในหน้า Apps Script โดยตรง ให้ไปที่แท็บ **Actions → Pull from Apps Script → Run workflow** แล้ว workflow จะดึงโค้ดกลับมา commit ลง repo ให้
+
+> `clasp push` จะ**แทนที่ไฟล์ทั้งหมด**ในโปรเจกต์ Apps Script ด้วยไฟล์ใน `apps-script/` ไฟล์อื่นที่อยู่ในโปรเจกต์จะถูกลบ
+
+### ตั้งค่าครั้งแรก
+
+1. เปิด Apps Script API ที่ https://script.google.com/home/usersettings
+2. ในเครื่องที่มี Node.js ให้รัน
+
+   ```bash
+   npx @google/clasp@2.4.2 login
+   ```
+
+   ล็อกอินด้วยบัญชี Google ที่เป็นเจ้าของสคริปต์ แล้วจะได้ไฟล์ `~/.clasprc.json` (Windows: `C:\Users\<ชื่อ>\.clasprc.json`)
+3. ใน GitHub ไปที่ **Settings → Secrets and variables → Actions → New repository secret** แล้วเพิ่ม 3 ตัว:
+
+   | Secret | ค่า |
+   |---|---|
+   | `CLASPRC_JSON` | เนื้อหาทั้งหมดของไฟล์ `.clasprc.json` |
+   | `SCRIPT_ID` | Apps Script → การตั้งค่าโครงการ → รหัสสคริปต์ |
+   | `DEPLOYMENT_ID` | Deploy → จัดการการทำให้ใช้งานได้ → รหัสการทำให้ใช้งานได้ |
+
+4. ไปที่ **Actions → Deploy to Apps Script → Run workflow** เพื่อทดสอบ
+
+`CLASPRC_JSON` คือสิทธิ์เข้าถึงบัญชี Google ของคุณ ห้ามใส่ไว้ในไฟล์ใน repo ให้เก็บเป็น secret เท่านั้น
+
 ### ใช้กับ clasp (ทางเลือก)
 
 ```bash
