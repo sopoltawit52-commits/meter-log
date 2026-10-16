@@ -254,13 +254,13 @@ details summary{cursor:pointer;font-weight:600}
         <div class="small muted">วันตัดรอบ = วันที่หอจดมิเตอร์ เช่น ทุกวันที่ 25 รอบบิลจะเป็น 25 ถึง 24 ของเดือนถัดไป</div>
       </div>
       <div class="card">
-        <h2>งบและการแจ้งเตือน</h2>
+        <h2>งบค่าไฟ</h2>
         <label>งบค่าไฟต่อรอบ (บาท, เว้นว่าง = ไม่ใช้)<input id="sBudget" type="text" inputmode="decimal" placeholder="เช่น 800"></label>
-        <label>อีเมลเตือนเมื่อไม่ได้จดเกิน
+        <label hidden>อีเมลเตือนเมื่อไม่ได้จดเกิน
           <select id="sRemind"><option value="0">ปิด</option><option value="2">2 วัน</option><option value="3">3 วัน</option><option value="5">5 วัน</option><option value="7">7 วัน</option></select>
         </label>
-        <label class="check"><input type="checkbox" id="sRemindCycle"> อีเมลเตือนจดมิเตอร์ในวันตัดรอบบิล</label>
-        <div class="small muted" id="remindNote">อีเมลส่งไปที่บัญชี Google เจ้าของชีต วันละครั้งราว 19:00 ถ้าตั้งงบไว้ จะเตือนครั้งเดียวต่อรอบเมื่อคาดว่าจะเกินงบ</div>
+        <label class="check" hidden><input type="checkbox" id="sRemindCycle"> อีเมลเตือนจดมิเตอร์ในวันตัดรอบบิล</label>
+        <div class="small muted" id="remindNote" hidden>อีเมลส่งไปที่บัญชี Google เจ้าของชีต วันละครั้งราว 19:00 ถ้าตั้งงบไว้ จะเตือนครั้งเดียวต่อรอบเมื่อคาดว่าจะเกินงบ</div>
       </div>
       <button type="submit" class="primary">บันทึกการตั้งค่า</button>
     </form>
