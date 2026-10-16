@@ -122,13 +122,21 @@ nav.tabs button[aria-current="page"]{color:var(--accent);font-weight:600}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;z-index:20;max-width:calc(100% - 32px)}
 .pinov{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
 .pinbox{width:100%;max-width:360px}
+.budget{display:flex;gap:6px;flex-wrap:wrap;align-items:baseline}
+label.check{flex-direction:row;align-items:center;gap:8px;color:var(--ink);font-size:14px}
+label.check input{width:20px;height:20px;accent-color:var(--accent);flex:none}
+.tag{display:inline-block;font:600 11px/1.6 var(--sans);padding:0 7px;border-radius:999px;background:var(--fc-soft);color:var(--ink);border:1px solid var(--line);vertical-align:2px}
+details.adv>summary{font-size:15px}
+details.adv[open]>summary{margin-bottom:4px}
+details.adv:not([open]){gap:0}
+hr{border:0;border-top:1px solid var(--line);margin:6px 0;width:100%}
+#queueBanner .xbtn{margin-left:6px}
 ol.tips{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
 details summary{cursor:pointer;font-weight:600}
 @media (prefers-reduced-motion:no-preference){.bar i{transition:width .4s}}
 @media (max-width:380px){.kpis{grid-template-columns:1fr 1fr}.bill .big{font-size:32px}.odo span{font-size:22px;min-width:20px}}
 </style>
 
-</head>
 <body>
 <div class="wrap" id="app">
   <header class="top">
@@ -138,7 +146,7 @@ details summary{cursor:pointer;font-weight:600}
     </div>
     <span class="chip" id="lastChip"><span class="dot"></span><span>–</span></span>
   </header>
-  <div class="banner" id="demoBanner" hidden>กำลังแสดง <b>ข้อมูลตัวอย่าง</b> ยังไม่ใช่ข้อมูลของคุณ — บันทึกเลขมิเตอร์ครั้งแรก หรือไปที่แท็บ “ตั้งค่า” เพื่อนำเข้าไฟล์ Excel เดิม</div>
+  <div class="banner" id="queueBanner" hidden></div>
 
   <!-- HOME -->
   <section id="v-home" class="view" style="display:flex;flex-direction:column;gap:14px">
@@ -159,6 +167,7 @@ details summary{cursor:pointer;font-weight:600}
         <div class="kpi"><b class="num" id="kProj">–</b><span>ทั้งรอบ (คาด)</span></div>
         <div class="kpi"><b class="num" id="kAvg">–</b><span>เฉลี่ย/วัน</span></div>
       </div>
+      <div class="budget small" id="budgetLine" hidden></div>
       <div class="cmp small" id="cmpLine"></div>
     </div>
 
@@ -169,9 +178,11 @@ details summary{cursor:pointer;font-weight:600}
       <form id="entryForm" style="display:flex;flex-direction:column;gap:10px" novalidate>
         <div class="grid2">
           <label>วันที่<input type="date" id="fDate" required></label>
-          <label>เลขมิเตอร์<input class="meter" id="fVal" type="text" inputmode="decimal" autocomplete="off" placeholder="00000" required></label>
+          <label>เวลาที่จด<input type="time" id="fTime" required></label>
         </div>
+        <label>เลขมิเตอร์<input class="meter" id="fVal" type="text" inputmode="decimal" autocomplete="off" placeholder="00000" required></label>
         <label>หมายเหตุ (ไม่บังคับ)<input id="fNote" type="text" placeholder="เช่น เปิดแอร์ทั้งคืน, ไม่อยู่ห้อง 3 วัน"></label>
+        <label class="check"><input type="checkbox" id="fReset"> เปลี่ยนมิเตอร์ใหม่ / เลขเริ่มนับใหม่</label>
         <div class="small" id="fHint" aria-live="polite"></div>
         <button class="primary" type="submit" id="fSave">บันทึก</button>
       </form>
@@ -180,7 +191,7 @@ details summary{cursor:pointer;font-weight:600}
     <div class="card chart">
       <div class="row between"><h2>14 วันล่าสุด</h2><button class="ghost xbtn" data-go="charts">ดูกราฟทั้งหมด →</button></div>
       <div id="miniChart"></div>
-      <div class="legend"><span><i style="background:var(--accent)"></i>จดจริง</span><span><i style="background:var(--est)"></i>เฉลี่ยจากช่วงที่ไม่ได้จด</span><span><i style="background:var(--fc)"></i>ประมาณ (ยังไม่จด)</span></div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>จดต่อเนื่อง</span><span><i style="background:var(--est)"></i>เฉลี่ยจากช่วงที่ไม่ได้จด</span><span><i style="background:var(--fc)"></i>ประมาณ (ยังไม่จด)</span></div>
     </div>
   </section>
 
@@ -191,18 +202,31 @@ details summary{cursor:pointer;font-weight:600}
         <div class="seg" id="rangeSeg"><button type="button" data-r="30" aria-pressed="true">30 วัน</button><button type="button" data-r="60">60</button><button type="button" data-r="90">90</button></div>
       </div>
       <div id="dailyChart"></div>
-      <div class="legend"><span><i style="background:var(--accent)"></i>จดจริง</span><span><i style="background:var(--est)"></i>เฉลี่ยจากช่วงที่ไม่ได้จด</span><span><i style="background:var(--fc)"></i>ประมาณ</span><span><i style="background:var(--muted);height:2px"></i>ค่าเฉลี่ย</span></div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>จดต่อเนื่อง</span><span><i style="background:var(--est)"></i>เฉลี่ยจากช่วงที่ไม่ได้จด</span><span><i style="background:var(--fc)"></i>ประมาณ</span><span><i style="background:var(--muted);height:2px"></i>ค่าเฉลี่ย</span></div>
     </div>
     <div class="card chart">
       <div class="row between"><h2>เทียบรายรอบบิล</h2>
         <div class="seg" id="unitSeg"><button type="button" data-u="baht" aria-pressed="true">บาท</button><button type="button" data-u="unit">หน่วย</button></div>
       </div>
       <div id="cycleChart"></div>
-      <div class="legend"><span><i style="background:var(--accent)"></i>ใช้จริง</span><span><i style="background:var(--fc)"></i>คาดการณ์รอบนี้</span></div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>คำนวณจากที่จด</span><span><i style="background:var(--fc)"></i>คาดการณ์</span><span><i style="background:var(--ink);height:3px"></i>บิลจริง</span></div>
     </div>
     <div class="card">
       <h2>สรุปเปรียบเทียบ</h2>
       <div class="tablewrap"><table id="cmpTable"></table></div>
+    </div>
+    <div class="card">
+      <h2>บิลจริงจากหอ</h2>
+      <div class="small muted">กรอกยอดตามบิลที่หอเรียกเก็บ เพื่อเทียบกับที่แอปคำนวณ ถ้าใส่จำนวนหน่วยด้วย แอปจะคำนวณราคาต่อหน่วยจริงให้</div>
+      <form id="billForm" style="display:flex;flex-direction:column;gap:10px" novalidate>
+        <label>รอบบิล<select id="bCycle"></select></label>
+        <div class="grid2">
+          <label>ยอดเงินตามบิล (บาท)<input id="bAmt" type="text" inputmode="decimal" placeholder="เช่น 850"></label>
+          <label>หน่วยตามบิล (ไม่บังคับ)<input id="bUnits" type="text" inputmode="decimal" placeholder="เช่น 170"></label>
+        </div>
+        <button type="submit" class="primary">บันทึกบิลจริง</button>
+      </form>
+      <div class="hist" id="billList"></div>
     </div>
   </section>
 
@@ -217,9 +241,10 @@ details summary{cursor:pointer;font-weight:600}
 
   <!-- SETTINGS -->
   <section id="v-set" class="view" hidden style="flex-direction:column;gap:14px">
-    <div class="card">
-      <h2>อัตราค่าไฟของที่พัก</h2>
-      <form id="setForm" style="display:flex;flex-direction:column;gap:10px" novalidate>
+    <form id="setForm" style="display:flex;flex-direction:column;gap:14px" novalidate>
+      <div class="card">
+        <h2>อัตราค่าไฟของที่พัก</h2>
+        <label>ชื่อที่พัก<input id="sPlace" type="text" placeholder="เช่น หอแพนด้า ห้อง 305"></label>
         <div class="grid2">
           <label>ราคาต่อหน่วย (บาท)<input id="sRate" type="text" inputmode="decimal"></label>
           <label>ค่าบริการคงที่/เดือน<input id="sFee" type="text" inputmode="decimal" placeholder="0"></label>
@@ -227,15 +252,75 @@ details summary{cursor:pointer;font-weight:600}
           <label>ขั้นต่ำต่อเดือน (บาท)<input id="sMin" type="text" inputmode="decimal" placeholder="0"></label>
         </div>
         <div class="small muted">วันตัดรอบ = วันที่หอจดมิเตอร์ เช่น ทุกวันที่ 25 รอบบิลจะเป็น 25 ถึง 24 ของเดือนถัดไป</div>
-        <button type="submit" class="primary">บันทึกการตั้งค่า</button>
-      </form>
+      </div>
+      <div class="card">
+        <h2>งบและการแจ้งเตือน</h2>
+        <label>งบค่าไฟต่อรอบ (บาท, เว้นว่าง = ไม่ใช้)<input id="sBudget" type="text" inputmode="decimal" placeholder="เช่น 800"></label>
+        <label>อีเมลเตือนเมื่อไม่ได้จดเกิน
+          <select id="sRemind"><option value="0">ปิด</option><option value="2">2 วัน</option><option value="3">3 วัน</option><option value="5">5 วัน</option><option value="7">7 วัน</option></select>
+        </label>
+        <label class="check"><input type="checkbox" id="sRemindCycle"> อีเมลเตือนจดมิเตอร์ในวันตัดรอบบิล</label>
+        <div class="small muted" id="remindNote">อีเมลส่งไปที่บัญชี Google เจ้าของชีต วันละครั้งราว 19:00 ถ้าตั้งงบไว้ จะเตือนครั้งเดียวต่อรอบเมื่อคาดว่าจะเกินงบ</div>
+      </div>
+      <button type="submit" class="primary">บันทึกการตั้งค่า</button>
+    </form>
+
+    <div class="card">
+      <div class="row between"><h2>ย้ายที่พัก</h2><span class="small muted" id="placeSince"></span></div>
+      <div class="small muted">ย้ายหอแล้วประวัติเดิมยังอยู่ครบ ระบบแยกมิเตอร์ ราคาต่อหน่วย และวันตัดรอบของแต่ละที่ให้ กราฟและตารางเทียบรอบบิลจะแสดงต่อเนื่องพร้อมชื่อที่พัก</div>
+      <div class="hist" id="placeList"></div>
+      <details id="moveBox"><summary>ย้ายไปที่พักใหม่…</summary>
+        <form id="moveForm" style="display:flex;flex-direction:column;gap:10px;margin-top:10px" novalidate>
+          <div class="sub">1 · ที่พักเดิม (ตอนย้ายออก)</div>
+          <label>เลขมิเตอร์สุดท้ายของที่เดิม (ไม่บังคับ แต่แนะนำ)<input id="mvOutV" class="meter" type="text" inputmode="decimal" placeholder="00000"></label>
+          <div class="grid2">
+            <label>วันย้ายออก<input id="mvOutDate" type="date"></label>
+            <label>เวลา<input id="mvOutTime" type="time"></label>
+          </div>
+          <div class="sub">2 · ที่พักใหม่</div>
+          <label>ชื่อที่พักใหม่<input id="mvName" type="text" placeholder="เช่น คอนโด B ห้อง 1204"></label>
+          <div class="grid2">
+            <label>วันย้ายเข้า<input id="mvDate" type="date"></label>
+            <label>เวลา<input id="mvTime" type="time"></label>
+          </div>
+          <label>เลขมิเตอร์แรกที่ที่พักใหม่<input id="mvV" class="meter" type="text" inputmode="decimal" placeholder="00000"></label>
+          <div class="grid2">
+            <label>ราคาต่อหน่วย (บาท)<input id="mvRate" type="text" inputmode="decimal"></label>
+            <label>ค่าบริการคงที่/เดือน<input id="mvFee" type="text" inputmode="decimal" placeholder="0"></label>
+            <label>วันตัดรอบบิล<select id="mvCycle"></select></label>
+            <label>ขั้นต่ำต่อเดือน (บาท)<input id="mvMin" type="text" inputmode="decimal" placeholder="0"></label>
+          </div>
+          <div class="small" id="mvHint" aria-live="polite"></div>
+          <button type="submit" class="primary" id="mvGo">ยืนยันย้ายที่พัก</button>
+        </form>
+      </details>
+      <button type="button" class="ghost danger" id="undoMoveBtn" hidden>ยกเลิกการย้ายครั้งล่าสุด</button>
     </div>
 
     <div class="card">
+      <h2>สำรองข้อมูล</h2>
+      <div class="small muted">ทุกการบันทึกจะเขียนลงชีต “Readings” ใน Google Sheets ทันที เปิดดู แก้ หรือดาวน์โหลดจาก Google Sheets ได้ตามปกติ (มีประวัติเวอร์ชันของ Google ให้ย้อนได้)</div>
+      <div class="row"><button type="button" id="copyBtn">คัดลอกเป็นข้อความ</button><button type="button" id="logoutBtn" class="ghost">ออกจากระบบ (ล้าง PIN)</button></div>
+    </div>
+
+    <div class="card">
+      <h2>ลืมจดก็ไม่เป็นไร</h2>
+      <ol class="tips small">
+        <li>ไม่ต้องจดทุกวัน ระบบจะเฉลี่ยหน่วยตาม<b>ชั่วโมงจริง</b>ระหว่างสองครั้งที่จด (แถบสีอ่อนในกราฟ) จึงควรใส่เวลาที่จดให้ตรง</li>
+        <li>ช่วงหลังจดครั้งล่าสุดจะประมาณจากอัตราใช้ 14 วันล่าสุด (แถบสีส้ม) ยอดเงินคาดการณ์จึงยังขึ้นเสมอ</li>
+        <li>แนะนำจดอย่างน้อย <b>สัปดาห์ละครั้ง</b> และ <b>วันตัดรอบบิล</b> เพื่อให้ยอดตรงกับบิลหอ</li>
+        <li>ไม่มีเน็ตก็บันทึกได้ ระบบเก็บไว้ในเครื่องแล้วส่งขึ้นชีตให้เองเมื่อกลับมาออนไลน์</li>
+        <li>ย้ายหอ: ไปที่ “ย้ายที่พัก” จดเลขสุดท้ายของห้องเดิมและเลขแรกของห้องใหม่ ประวัติเดิมยังอยู่ครบ</li>
+        <li>เพิ่มหน้านี้ไว้ที่หน้าจอหลัก (แชร์ → เพิ่มลงหน้าจอโฮม)</li>
+      </ol>
+    </div>
+
+    <details class="card adv">
+      <summary>ขั้นสูง: นำเข้าข้อมูล / ล้างข้อมูล</summary>
       <h2>นำเข้าข้อมูลเดิม</h2>
       <div class="small muted">รองรับไฟล์ .xlsx .xls .csv หรือคัดลอกจาก Excel / Google Sheets มาวางได้เลย ต้องมีคอลัมน์ <b>วันที่</b> และ <b>เลขมิเตอร์</b> (หรือหน่วยที่ใช้ต่อวัน) รองรับปี พ.ศ. และชื่อเดือนไทย</div>
       <label>เลือกไฟล์<input type="file" id="impFile" accept=".xlsx,.xls,.csv,.txt"></label>
-      <details><summary class="small">หรือวางข้อความ</summary>
+      <details id="pasteBox"><summary class="small">หรือวางข้อความ</summary>
         <textarea id="impText" rows="5" placeholder="วันที่	เลขมิเตอร์&#10;1/8/2568	12034&#10;8/8/2568	12088" style="margin-top:8px"></textarea>
         <button type="button" id="impParseText" style="margin-top:8px">อ่านข้อความ</button>
       </details>
@@ -252,32 +337,13 @@ details summary{cursor:pointer;font-weight:600}
         <div class="tablewrap"><table id="impPreview"></table></div>
         <button type="button" class="primary" id="impGo">นำเข้า</button>
       </div>
-    </div>
-
-    <div class="card">
-      <h2>สำรองข้อมูล</h2>
-      <div class="small muted">ทุกการบันทึกจะเขียนลงชีต “Readings” ใน Google Sheets ทันที เปิดดู แก้ หรือดาวน์โหลดจาก Google Sheets ได้ตามปกติ (มีประวัติเวอร์ชันของ Google ให้ย้อนได้)</div>
-      <div class="row"><button type="button" id="copyBtn">คัดลอกเป็นข้อความ</button><button type="button" id="logoutBtn" class="ghost">ออกจากระบบ (ล้าง PIN)</button></div>
-    </div>
-
-    <div class="card">
-      <h2>ลืมจดก็ไม่เป็นไร</h2>
-      <ol class="tips small">
-        <li>ไม่ต้องจดทุกวัน ระบบจะเฉลี่ยหน่วยที่ใช้ให้เท่า ๆ กันในวันที่ไม่ได้จด (แถบสีอ่อนในกราฟ)</li>
-        <li>วันหลังจากจดครั้งล่าสุดจะถูกประมาณจากอัตราใช้ 14 วันล่าสุด (แถบสีส้ม) ยอดเงินคาดการณ์จึงยังขึ้นเสมอ</li>
-        <li>แนะนำจดอย่างน้อย <b>สัปดาห์ละครั้ง</b> และ <b>วันตัดรอบบิล</b> เพื่อให้ยอดตรงกับบิลหอ</li>
-        <li>ย้อนจดได้ เลือกวันที่ย้อนหลังแล้วกรอกเลขจากรูปถ่ายมิเตอร์ได้เลย</li>
-        <li>ตั้งปลุกในมือถือทุกวันอาทิตย์ แล้วเพิ่มหน้านี้ไว้ที่หน้าจอหลัก (แชร์ → เพิ่มลงหน้าจอโฮม)</li>
-      </ol>
-    </div>
-    <div class="card">
+      <hr>
       <h2>ล้างข้อมูล</h2>
       <div class="small muted">ลบบันทึกทั้งหมด ใช้เมื่อนำเข้าผิดและต้องการเริ่มใหม่</div>
       <button type="button" class="danger" id="wipeBtn">ลบข้อมูลทั้งหมด</button>
-    </div>
+    </details>
   </section>
 </div>
-
 <nav class="tabs" aria-label="เมนู"><div class="in">
   <button type="button" data-tab="home" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>หน้าหลัก</button>
   <button type="button" data-tab="charts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>กราฟ</button>
@@ -293,8 +359,6 @@ details summary{cursor:pointer;font-weight:600}
     <button type="submit" class="primary">เข้าใช้งาน</button>
   </form>
 </div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 (function(){
 "use strict";
@@ -303,29 +367,36 @@ const DAY=86400000;
 const TH_MON=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
 const TH_FULL=["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
 const EN_MON=["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
-const DEFAULTS={rate:8,fee:0,cycleDay:1,minCharge:0};
+const DEFAULTS={rate:5,fee:0,cycleDay:1,minCharge:0,budget:0,remindDays:0,remindCycle:0};
+const DEFAULT_TIME="12:00";      // แถวเก่าที่ไม่มีเวลาที่จด
+const SPIKE=3;                   // เตือนเมื่อใช้ต่อวันเกินค่าเฉลี่ยกี่เท่า
 
 // ---------- date helpers (day numbers, UTC-based) ----------
 const dn=(y,m,d)=>Math.round(Date.UTC(y,m,d)/DAY);
 const todayDn=()=>{const t=new Date();return dn(t.getFullYear(),t.getMonth(),t.getDate());};
+const nowX=()=>{const t=new Date();return todayDn()+(t.getHours()*60+t.getMinutes())/1440;};
+const nowHM=()=>{const t=new Date();return String(t.getHours()).padStart(2,"0")+":"+String(t.getMinutes()).padStart(2,"0");};
 const ymd=n=>{const d=new Date(n*DAY);return{y:d.getUTCFullYear(),m:d.getUTCMonth(),d:d.getUTCDate()};};
 const key=n=>{const o=ymd(n);return o.y+"-"+String(o.m+1).padStart(2,"0")+"-"+String(o.d).padStart(2,"0");};
 const fromKey=k=>{const [y,m,d]=k.split("-").map(Number);return dn(y,m-1,d);};
+const hmToF=t=>{const m=/^(\d{1,2}):(\d{2})/.exec(t||"");return m?(+m[1]*60+ +m[2])/1440:null;};
 const fmtD=(n,withY)=>{const o=ymd(n);return o.d+" "+TH_MON[o.m]+(withY?" "+String(o.y+543).slice(2):"");};
 const fmtN=(v,dig=0)=>v==null||!isFinite(v)?"–":v.toLocaleString("th-TH",{minimumFractionDigits:dig,maximumFractionDigits:dig});
 const fmtB=v=>"฿"+fmtN(Math.round(v));
+const fmtGap=d=>d<2?fmtN(d*24)+" ชม.":fmtN(d,d<10?1:0)+" วัน";
 const num=s=>{if(typeof s==="number")return s;const t=String(s??"").replace(/[,\s฿]/g,"");if(t==="")return NaN;return Number(t);};
 
 // ---------- state ----------
-let readings=[]; // {k, n, v, note}
+let readings=[]; // {k, n, x, v, note, t, reset}
 let settings={...DEFAULTS};
-let mode="init";
-let demo=false;
+let bills={};    // cycleStartKey -> {amount, units, note}
+let places=[];   // ที่พักเรียงตามวันย้ายเข้า (ตัวสุดท้าย = ปัจจุบัน)
+let triggerOk=false;
 let range=30, cycUnit="baht", histShown=40;
 
 // ---------- storage layer (Apps Script API) ----------
 const API_URL="https://script.google.com/macros/s/AKfycbzyutxavAT1x2dE4SQZvKuyAvzIkdL7df7ZCEVEc_R0xwwz2WOGqPEcJoPHAjqBw1A_/exec";
-const PIN_KEY="meterlog.pin", CACHE_KEY="meterlog.cache";
+const PIN_KEY="meterlog.pin", CACHE_KEY="meterlog.cache", QUEUE_KEY="meterlog.queue";
 const lsGet=k=>{try{return localStorage.getItem(k);}catch(e){return null;}};
 const lsSet=(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v);}catch(e){}};
 let pin=lsGet(PIN_KEY)||"";
@@ -343,124 +414,202 @@ async function gs(action,...args){
     try{
       const resp=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({pin,action,args}),redirect:"follow"});
       r=await resp.json();
-    }catch(e){throw new Error(navigator.onLine===false?"ไม่มีอินเทอร์เน็ต":"ติดต่อเซิร์ฟเวอร์ไม่ได้");}
+    }catch(e){const er=new Error(navigator.onLine===false?"ไม่มีอินเทอร์เน็ต":"ติดต่อเซิร์ฟเวอร์ไม่ได้");er.offline=true;throw er;}
     if(r.ok)return r.data;
     if(r.error==="bad_pin"){pin="";lsSet(PIN_KEY,null);await askPin("PIN ไม่ถูกต้อง ลองใหม่");continue;}
     throw new Error(r.error||"เกิดข้อผิดพลาด");
   }
   throw new Error("PIN ไม่ถูกต้อง");
 }
+
+// ---------- offline queue ----------
+const getQueue=()=>{try{return JSON.parse(lsGet(QUEUE_KEY)||"[]")||[];}catch(e){return[];}};
+const setQueue=q=>lsSet(QUEUE_KEY,q.length?JSON.stringify(q):null);
+function upsertLocal(o){
+  const t=o.t||"";const n=fromKey(o.k);
+  const r={k:o.k,n,x:n+(hmToF(t)??hmToF(DEFAULT_TIME)),v:Number(o.v),note:o.note||"",t,reset:!!o.reset,pending:!!o.pending};
+  const i=readings.findIndex(x=>x.k===o.k);if(i>=0)readings[i]=r;else readings.push(r);
+  readings.sort((a,b)=>a.x-b.x);
+}
+function applyQueueOverlay(){getQueue().forEach(o=>upsertLocal({...o,pending:true}));}
+function updateQueueBanner(){
+  const q=getQueue();const b=$("#queueBanner");
+  b.hidden=!q.length;
+  if(q.length)b.innerHTML="มี <b>"+q.length+"</b> รายการที่บันทึกไว้ในเครื่อง ยังไม่ได้ส่งขึ้น Google Sheets · ระบบจะส่งให้เองเมื่อมีเน็ต <button type='button' class='xbtn' id='flushBtn'>ส่งตอนนี้</button>";
+}
+let flushing=false;
+async function flushQueue(){
+  if(flushing)return;let q=getQueue();if(!q.length)return;
+  flushing=true;let data=null;
+  try{
+    while(q.length){const o=q[0];data=await gs("saveReading",o.k,o.v,o.note||"",o.t||"",!!o.reset);q.shift();setQueue(q);}
+    toast("ส่งรายการที่ค้างขึ้นชีตแล้ว");
+  }catch(e){}finally{flushing=false;}
+  if(data)applyData(data);else updateQueueBanner();
+}
+
 function applyData(d,fromCache){
   if(!d)return;
   setReadingsFromMap(d.readings||{});
   settings={...DEFAULTS,...(d.settings||{})};
-  mode="cloud";fillSettings();render();
+  bills=d.bills||{};triggerOk=!!d.triggerOk;
+  setPlaces(d.places);
+  applyQueueOverlay();
+  fillSettings();render();updateQueueBanner();
   if(!fromCache){lsSet(CACHE_KEY,JSON.stringify({d,at:Date.now()}));
     $("#syncState").textContent="เก็บใน Google Sheets · อัปเดต "+new Date().toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});}
 }
 function setReadingsFromMap(map){
-  readings=Object.entries(map).map(([k,o])=>({k,n:fromKey(k),v:Number(o.v),note:o.note||""})).filter(r=>isFinite(r.v)).sort((a,b)=>a.n-b.n);
+  readings=Object.entries(map).map(([k,o])=>{const n=fromKey(k);const t=o.t||"";
+    return{k,n,x:n+(hmToF(t)??hmToF(DEFAULT_TIME)),v:Number(o.v),note:o.note||"",t,reset:!!o.reset};})
+    .filter(r=>isFinite(r.v)).sort((a,b)=>a.x-b.x);
 }
-async function putReading(k,v,note){applyData(await gs("saveReading",k,v,note||""));}
+async function putReading(o){
+  try{applyData(await gs("saveReading",o.k,o.v,o.note||"",o.t||"",!!o.reset));return "ok";}
+  catch(e){
+    if(!e.offline)throw e;
+    const q=getQueue().filter(x=>x.k!==o.k);q.push(o);setQueue(q);
+    upsertLocal({...o,pending:true});render();updateQueueBanner();return "queued";
+  }
+}
 async function delReading(k){applyData(await gs("deleteReading",k));}
 async function putSettings(s){applyData(await gs("saveSettings",s));}
 async function refresh(){
-  try{$("#syncState").textContent="กำลังซิงก์…";applyData(await gs("getData"));}
+  try{$("#syncState").textContent="กำลังซิงก์…";await flushQueue();applyData(await gs("getData"));}
   catch(e){$("#syncState").textContent=(lsGet(CACHE_KEY)?"แสดงข้อมูลล่าสุดที่บันทึกไว้ · ":"")+(e&&e.message||e);}
 }
 async function init(){
   try{const c=JSON.parse(lsGet(CACHE_KEY)||"null");if(c&&c.d){applyData(c.d,true);
     $("#syncState").textContent="ข้อมูลเมื่อ "+new Date(c.at).toLocaleString("th-TH",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});}}catch(e){}
+  updateQueueBanner();
   await refresh();
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")refresh();});
+  window.addEventListener("online",()=>refresh());
   if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{});}
 }
-$("#logoutBtn").addEventListener("click",()=>{pin="";lsSet(PIN_KEY,null);lsSet(CACHE_KEY,null);location.reload();});
+$("#logoutBtn").addEventListener("click",()=>{
+  if(getQueue().length&&!confirmLogout){confirmLogout=true;toast("ยังมีรายการค้างส่ง กดอีกครั้งเพื่อออกและทิ้งรายการ");setTimeout(()=>confirmLogout=false,4000);return;}
+  pin="";lsSet(PIN_KEY,null);lsSet(CACHE_KEY,null);lsSet(QUEUE_KEY,null);location.reload();});
+let confirmLogout=false;
+document.addEventListener("click",e=>{if(e.target.closest("#flushBtn"))refresh();});
 
-// ---------- demo data (not stored) ----------
-function demoReadings(){
-  const t=todayDn();let v=18420;const out=[];let seed=7;
-  const rnd=()=>{seed=(seed*9301+49297)%233280;return seed/233280;};
-  for(let n=t-95;n<=t-2;n++){
-    const wk=ymd(n);const dow=new Date(n*DAY).getUTCDay();
-    v+=5.2+rnd()*3.5+(dow===0||dow===6?2.2:0)+(wk.m>=3&&wk.m<=5?1.5:0);
-    const r=rnd();
-    if(r<0.42||n===t-2)out.push({k:key(n),n,v:Math.round(v),note:""});
-  }
-  return out;
+// ---------- places (ย้ายที่พัก) ----------
+function setPlaces(list){
+  const L=(Array.isArray(list)&&list.length?list:[{start:"",name:"ที่พักปัจจุบัน",rate:settings.rate,fee:settings.fee,cycleDay:settings.cycleDay,minCharge:settings.minCharge}])
+    .map(p=>({...p})).sort((a,b)=>(a.start||"")<(b.start||"")?-1:1);
+  L.forEach((p,i)=>{
+    p.sn=p.start?fromKey(p.start):-Infinity;
+    p.sx=p.sn+(hmToF(p.t)??0);
+    p.endN=i<L.length-1?fromKey(L[i+1].start)-1:Infinity;
+    p.ox=p.outV!=null&&p.outK?fromKey(p.outK)+(hmToF(p.outT)??hmToF(DEFAULT_TIME)):null;
+    p.cycleDay=Number(p.cycleDay)||1;
+  });
+  // ที่พักปัจจุบันใช้ค่าจาก settings (แก้ล่าสุด)
+  const c=L[L.length-1];["rate","fee","cycleDay","minCharge"].forEach(k=>{if(settings[k]!=null)c[k]=Number(settings[k]);});
+  if(settings.placeName)c.name=settings.placeName;
+  places=L;
 }
+setPlaces([]);
+const curPlace=()=>places[places.length-1];
+function placeIdx(n){let i=0;for(let j=0;j<places.length;j++)if(places[j].sn<=n)i=j;return i;}
 
 // ---------- core model ----------
+// แต่ละช่วงระหว่างสองครั้งที่จด (ในที่พักเดียวกัน) กระจายหน่วยเท่า ๆ กันตามเวลาจริง
 function model(){
-  const R=demo?demoReadings():readings;
-  const t=todayDn();
-  const daily=new Map(); // n -> {u, kind}
-  const issues=new Set();
-  for(let i=1;i<R.length;i++){
-    const a=R[i-1],b=R[i];const gap=b.n-a.n;if(gap<=0)continue;
-    let du=b.v-a.v; if(du<0){issues.add(b.k);du=0;}
-    const per=du/gap;
-    for(let n=a.n+1;n<=b.n;n++)daily.set(n,{u:per,kind:gap===1?"act":"est"});
+  const R=readings, t=todayDn(), now=nowX();
+  const iv=[];const issues=new Set();
+  const rateIn=(x0,x1)=>{let u=0,len=0;iv.forEach(s=>{const o=Math.min(s.x1,x1)-Math.max(s.x0,x0);if(o>0){u+=s.u*o/(s.x1-s.x0);len+=o;}});return len>0?u/len:null;};
+  const groups=places.map(()=>[]);
+  R.forEach(r=>{r.pi=placeIdx(r.n);groups[r.pi].push(r);});
+  places.forEach((p,i)=>{if(p.ox!=null)groups[i].push({k:"out"+i,n:Math.floor(p.ox),x:p.ox,v:Number(p.outV),t:p.outT||"",note:"",pseudo:true,pi:i});groups[i].sort((a,b)=>a.x-b.x);});
+  const rows=[];
+  groups.forEach((g,gi)=>{
+    g.forEach((b,i)=>{
+      b.prev=i>0?g[i-1]:null;b.firstOfPlace=i===0&&gi>0&&!b.pseudo;rows.push(b);
+      if(!b.prev)return;const a=b.prev;const span=b.x-a.x;if(span<=0)return;
+      let u=b.v-a.v,est=span>1.5,kind="norm";
+      if(b.reset){const r=rateIn(a.x-14,a.x);u=r==null?0:r*span;est=true;kind="reset";}
+      else if(u<0){issues.add(b.k);const r=rateIn(a.x-14,a.x);u=r==null?0:r*span;est=true;kind="drop";}
+      iv.push({x0:a.x,x1:b.x,u,est,kind,to:b.k});
+    });
+  });
+  const cg=groups[groups.length-1].filter(r=>!r.pseudo);
+  const last=cg.length?cg[cg.length-1]:null;
+  let rate=last?rateIn(Math.max(last.x-14,curPlace().sx),last.x):null,rateFallback=false;
+  if(rate==null&&last&&places.length>1){ // หอใหม่ยังจดไม่ถึง 2 ครั้ง: ใช้อัตราจากที่พักเดิมไปก่อน
+    const pg=groups[groups.length-2];const pl=pg.length?pg[pg.length-1]:null;
+    if(pl){rate=rateIn(pl.x-14,pl.x);rateFallback=rate!=null;}
   }
-  // recent rate from last ~14 days of readings
-  let rate=null;
-  if(R.length>=2){
-    const last=R[R.length-1];let j=R.length-2;
-    while(j>0&&last.n-R[j].n<14)j--;
-    const a=R[j];const span=last.n-a.n;
-    if(span>0)rate=Math.max(0,(last.v-a.v)/span);
+  function units(x0,x1){
+    let known=0,fc=0,est=0;
+    iv.forEach(s=>{const o=Math.min(s.x1,x1)-Math.max(s.x0,x0);if(o>0){const u=s.u*o/(s.x1-s.x0);known+=u;if(s.est)est+=u;}});
+    if(last&&rate!=null){const o=x1-Math.max(x0,last.x);if(o>0)fc=rate*o;}
+    const covered=iv.some(s=>s.x1>x0&&s.x0<x1);
+    return{known,fc,est,total:known+fc,covered};
   }
-  const last=R.length?R[R.length-1]:null;
-  return{R,daily,rate,last,t,issues};
+  rows.sort((a,b)=>a.x-b.x);
+  const ivTo=new Map(iv.map(s=>[s.to,s]));
+  return{R,rows,iv,ivTo,rate,rateFallback,last,t,now,issues,units};
 }
 function cycleOf(n,D){const o=ymd(n);let s=o.d>=D?dn(o.y,o.m,D):dn(o.y,o.m-1,D);const so=ymd(s);const e=dn(so.y,so.m+1,D)-1;return{s,e};}
-function billOf(units){const s=settings;return Math.max(units*num(s.rate)+ (num(s.fee)||0), num(s.minCharge)||0);}
+// รอบบิลของวัน n ตามที่พักที่อยู่ตอนนั้น (ตัดขอบที่วันย้ายเข้า/ย้ายออก)
+// xs/xe = ขอบเวลาจริงของรอบ (เริ่มที่เวลาย้ายเข้า และจบที่เวลาย้ายเข้าที่พักถัดไป)
+function cycleAt(n){const pi=placeIdx(n),p=places[pi],nx=places[pi+1];const c=cycleOf(n,p.cycleDay||1);
+  const s=Math.max(c.s,p.sn),e=Math.min(c.e,nx?nx.sn:Infinity);
+  return{s,e,xs:Math.max(c.s,p.sx),xe:Math.min(c.e+1,nx?nx.sx:Infinity),pi,first:c.s<p.sn,last:!!nx&&c.e>=nx.sn};}
+function billOf(units,pi){const s=pi==null?curPlace():places[pi];return Math.max(units*num(s.rate)+(num(s.fee)||0),num(s.minCharge)||0);}
 function cycleStats(M,c){
-  let act=0,fc=0,days=0,known=0;
-  for(let n=c.s;n<=c.e;n++){
-    const d=M.daily.get(n);
-    if(d){act+=d.u;known++;}
-    else if(M.last&&n>M.last.n&&M.rate!=null){fc+=M.rate;}
-  }
-  return{act,fc,total:act+fc,known};
+  const u=M.units(c.xs,c.xe);
+  return{act:u.known,fc:u.fc,total:u.total};
 }
 
 // ---------- rendering ----------
 function render(){
-  if(mode!=="init")demo=readings.length===0;
-  $("#demoBanner").hidden=!demo;
   const M=model();
   renderHome(M);
   if(!$("#v-charts").hidden)renderCharts(M);
   if(!$("#v-hist").hidden)renderHist(M);
 }
 function renderHome(M){
-  const D=Number(settings.cycleDay)||1;const c=cycleOf(M.t,D);
+  const c=cycleAt(M.t);const P=curPlace();
   const st=cycleStats(M,c);
-  // actual used so far should include forecast up to today only (not future)
-  let usedToDate=0,fcToDate=0;
-  for(let n=c.s;n<=Math.min(M.t,c.e);n++){const d=M.daily.get(n);if(d)usedToDate+=d.u;else if(M.last&&n>M.last.n&&M.rate!=null)fcToDate+=M.rate;}
+  const toNow=M.units(c.xs,Math.min(M.now,c.xe));
+  const usedToDate=toNow.known,fcToDate=toNow.fc;
   const future=Math.max(0,st.total-usedToDate-fcToDate);
   const bill=billOf(st.total);
-  $("#cycleLabel").textContent="รอบบิล "+fmtD(c.s)+" – "+fmtD(c.e,true);
+  $("#cycleLabel").textContent=(places.length>1||P.name?P.name+" · ":"")+(c.first&&places.length>1?"รอบแรก ":"รอบบิล ")+fmtD(c.s)+" – "+fmtD(c.e,true);
   const left=c.e-M.t;$("#cycleLeft").textContent=left>0?"เหลืออีก "+left+" วัน":"วันสุดท้ายของรอบ";
-  $("#billBig").innerHTML=M.last?fmtB(bill).replace("฿","฿")+"":"฿–";
-  $("#billSub").textContent=M.last?("ประมาณ "+fmtN(st.total)+" หน่วย × "+fmtN(num(settings.rate),2)+" บาท"+(num(settings.fee)?" + ค่าบริการ "+fmtN(num(settings.fee))+" บาท":"")):"บันทึกอย่างน้อย 2 ครั้งเพื่อเริ่มคาดการณ์";
+  const budget=num(settings.budget)||0;
+  const over=budget>0&&M.last&&bill>budget;
+  $("#billBig").textContent=M.last?fmtB(bill):"฿–";
+  $("#billBig").style.color=over?"var(--bad)":"";
+  $("#billSub").textContent=M.last?("ประมาณ "+fmtN(st.total)+" หน่วย × "+fmtN(num(P.rate),2)+" บาท"+(num(P.fee)?" + ค่าบริการ "+fmtN(num(P.fee))+" บาท":"")+(M.rateFallback?" · คาดการณ์จากอัตราที่พักเดิม (จดเพิ่มอีกครั้งเพื่อให้แม่นขึ้น)":"")):(readings.length?"บันทึกอย่างน้อย 2 ครั้งเพื่อเริ่มคาดการณ์":"ยังไม่มีบันทึก — จดเลขมิเตอร์ครั้งแรกด้านล่าง");
   const tot=Math.max(st.total,0.0001);
   $("#barUsed").style.width=(usedToDate/tot*100)+"%";
   $("#barFc").style.width=((fcToDate+future)/tot*100)+"%";
   $("#kUsed").textContent=fmtN(usedToDate+fcToDate);
   $("#kProj").textContent=fmtN(st.total);
   $("#kAvg").textContent=M.rate!=null?fmtN(M.rate,1):"–";
+  // budget
+  const bl=$("#budgetLine");
+  if(budget>0&&M.last){
+    bl.hidden=false;
+    const rateB=num(P.rate);const daysLeft=Math.max(c.xe-M.now,0.01);
+    const unitsLeft=(budget-(num(P.fee)||0))/rateB-(usedToDate+fcToDate);
+    const perDay=unitsLeft/daysLeft;
+    bl.innerHTML=over
+      ?`<span class="delta up">เกินงบ ${fmtB(bill-budget)}</span> <span class="muted">· งบ ${fmtB(budget)}${perDay>0?` · ถ้าลดเหลือ ≤ ${fmtN(perDay,1)} หน่วย/วัน จะไม่เกินงบ`:" · ใช้เกินงบไปแล้ว"}</span>`
+      :`<span class="delta down">อยู่ในงบ (เหลือ ${fmtB(budget-bill)})</span> <span class="muted">· งบ ${fmtB(budget)} · ใช้ได้อีก ~${fmtN(perDay,1)} หน่วย/วัน</span>`;
+  }else bl.hidden=true;
   // comparison with previous cycle at same point
-  const pc=cycleOf(c.s-1,D);const k=M.t-c.s;
-  let prevSame=0,prevTot=0;
-  for(let n=pc.s;n<=pc.e;n++){const d=M.daily.get(n);if(d){prevTot+=d.u;if(n-pc.s<=k)prevSame+=d.u;}}
+  const pc=cycleAt(c.s-1);const otherPlace=pc.pi!==c.pi;
+  const prevSame=M.units(pc.xs,pc.xs+(M.now-c.xs)).total;
+  const prevTot=M.units(pc.xs,pc.xe).total;
   const cmp=$("#cmpLine");
-  if(prevTot>0){
+  if(prevTot>0&&M.units(pc.xs,pc.xe).covered){
     const nowSame=usedToDate+fcToDate;const pct=(nowSame-prevSame)/Math.max(prevSame,0.01)*100;
     const up=pct>0;
-    cmp.innerHTML="เทียบช่วงเดียวกันรอบก่อน: <span class='delta "+(up?"up":"down")+"'>"+(up?"▲ ":"▼ ")+fmtN(Math.abs(pct))+"%</span> <span class='muted'>· รอบก่อนทั้งรอบ "+fmtN(prevTot)+" หน่วย ("+fmtB(billOf(prevTot))+")</span>";
+    cmp.innerHTML="เทียบช่วงเดียวกันรอบก่อน: <span class='delta "+(up?"up":"down")+"'>"+(up?"▲ ":"▼ ")+fmtN(Math.abs(pct))+"%</span> <span class='muted'>· รอบก่อนทั้งรอบ "+fmtN(prevTot)+" หน่วย ("+fmtB(billOf(prevTot,pc.pi))+")"+(otherPlace?" · "+esc(places[pc.pi].name):"")+"</span>";
   }else cmp.innerHTML="<span class='muted'>ยังไม่มีข้อมูลรอบก่อนให้เปรียบเทียบ</span>";
   // last chip
   const chip=$("#lastChip");
@@ -468,9 +617,10 @@ function renderHome(M){
     const ago=M.t-M.last.n;
     chip.className="chip "+(ago<=2?"good":ago<=7?"":"warn");
     chip.lastElementChild.textContent=ago===0?"จดแล้ววันนี้":"จดล่าสุด "+ago+" วันก่อน";
-    $("#lastRead").textContent="ล่าสุด "+fmtD(M.last.n,true);
-    const est=M.rate!=null&&ago>0?M.last.v+M.rate*ago:null;
-    $("#nowEst").textContent=est!=null?"ตอนนี้น่าจะอยู่ที่ประมาณ "+fmtN(est)+" (ใช้ไป ~"+fmtN(M.rate*ago)+" หน่วย ตั้งแต่จดล่าสุด)":"";
+    $("#lastRead").textContent="ล่าสุด "+fmtD(M.last.n,true)+(M.last.t?" "+M.last.t:"");
+    const h=M.now-M.last.x;
+    const est=M.rate!=null&&h>2/24?M.last.v+M.rate*h:null;
+    $("#nowEst").textContent=est!=null?"ตอนนี้น่าจะอยู่ที่ประมาณ "+fmtN(est)+" (ใช้ไป ~"+fmtN(M.rate*h,1)+" หน่วย ใน "+fmtGap(h)+" ตั้งแต่จดล่าสุด)":"";
   }else{chip.className="chip";chip.lastElementChild.textContent="ยังไม่เคยจด";$("#lastRead").textContent="";$("#nowEst").textContent="";}
   renderOdo(M.last?M.last.v:0);
   const mini=[];for(let n=M.t-13;n<=M.t;n++)mini.push(dayItem(M,n));
@@ -478,10 +628,15 @@ function renderHome(M){
   updateHint();
 }
 function dayItem(M,n){
-  const d=M.daily.get(n);
-  if(d)return{v:d.u,kind:d.kind,label:String(ymd(n).d),title:fmtD(n,true)+": "+fmtN(d.u,1)+" หน่วย"+(d.kind==="est"?" (เฉลี่ย)":"")};
-  if(M.last&&n>M.last.n&&M.rate!=null&&n<=M.t)return{v:M.rate,kind:"fc",label:String(ymd(n).d),title:fmtD(n,true)+": ~"+fmtN(M.rate,1)+" หน่วย (ประมาณ)"};
-  return{v:0,kind:"none",label:String(ymd(n).d),title:fmtD(n,true)+": ไม่มีข้อมูล"};
+  const end=Math.min(n+1,M.now);
+  const u=end>n?M.units(n,end):{known:0,fc:0,est:0,covered:false};
+  const lb=String(ymd(n).d);const mv=places.findIndex((p,i)=>i>0&&p.sn===n);const mvT=mv>0?" · ย้ายเข้า "+places[mv].name:"";
+  if(u.known>0||u.covered){
+    const kind=u.est>u.known/2?"est":"act";
+    return{v:u.known,v2:u.fc,kind,label:lb,title:fmtD(n,true)+": "+fmtN(u.known+u.fc,1)+" หน่วย"+(kind==="est"?" (เฉลี่ย)":"")+(u.fc>0.05?" (รวมประมาณ "+fmtN(u.fc,1)+")":"")+mvT};
+  }
+  if(u.fc>0)return{v:u.fc,kind:"fc",label:lb,title:fmtD(n,true)+": ~"+fmtN(u.fc,1)+" หน่วย (ประมาณ)"};
+  return{v:0,kind:"none",label:lb,title:fmtD(n,true)+": ไม่มีข้อมูล"};
 }
 function renderOdo(v){
   const s=Math.floor(v).toString().padStart(5,"0");
@@ -494,7 +649,7 @@ function barChart(items,o){
   const W=380,H=o.h||220,padL=42,padR=8,padT=o.topLabels?22:10,padB=24;
   const cw=W-padL-padR,ch=H-padT-padB;
   const tot=it=>(it.v||0)+(it.v2||0);
-  const max=niceMax(Math.max(...items.map(tot),0.1)*1.05);
+  const max=niceMax(Math.max(...items.map(it=>Math.max(tot(it),it.mark||0)),0.1)*1.05);
   const n=items.length,slot=cw/n,bw=Math.max(2,Math.min(38,slot*0.72));
   const y=v=>padT+ch-(v/max)*ch;
   let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria||"กราฟ")}">`;
@@ -506,20 +661,21 @@ function barChart(items,o){
     const x=padL+slot*i+(slot-bw)/2;
     const h1=(it.v/max)*ch;
     if(it.v>0)s+=`<rect x="${x}" y="${y(it.v)}" width="${bw}" height="${Math.max(h1,0.5)}" rx="${Math.min(3,bw/4)}" fill="${col[it.kind]}"><title>${esc(it.title||"")}</title></rect>`;
-    if(it.v2>0){const h2=(it.v2/max)*ch;s+=`<rect x="${x}" y="${y(it.v+it.v2)}" width="${bw}" height="${h2}" rx="${Math.min(3,bw/4)}" fill="var(--fc)" opacity=".75"><title>${esc(it.title||"")}</title></rect>`;}
+    if(it.v2>0.01){const h2=(it.v2/max)*ch;s+=`<rect x="${x}" y="${y(it.v+it.v2)}" width="${bw}" height="${h2}" rx="${Math.min(3,bw/4)}" fill="var(--fc)" opacity=".75"><title>${esc(it.title||"")}</title></rect>`;}
+    if(it.mark>0)s+=`<line x1="${x-2}" x2="${x+bw+2}" y1="${y(it.mark)}" y2="${y(it.mark)}" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"><title>${esc(it.markTitle||"")}</title></line>`;
     if(it.kind==="none")s+=`<line x1="${x}" x2="${x+bw}" y1="${y(0)-1}" y2="${y(0)-1}" stroke="var(--muted)" stroke-dasharray="2 2"/>`;
     if(i%(o.labelEvery||1)===0||i===n-1)s+=`<text x="${x+bw/2}" y="${H-7}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc(it.label)}</text>`;
-    if(o.topLabels&&tot(it)>0)s+=`<text x="${x+bw/2}" y="${y(tot(it))-5}" text-anchor="middle" font-size="10" font-weight="600" fill="var(--ink)">${esc(o.topLabels(it))}</text>`;
+    if(o.topLabels&&tot(it)>0)s+=`<text x="${x+bw/2}" y="${y(Math.max(tot(it),it.mark||0))-5}" text-anchor="middle" font-size="10" font-weight="600" fill="var(--ink)">${esc(o.topLabels(it))}</text>`;
   });
-  if(o.avgLine){const vals=items.filter(i=>i.kind!=="none"&&i.kind!=="fc").map(i=>i.v);if(vals.length){const a=vals.reduce((p,c)=>p+c,0)/vals.length;const yy=y(a);
+  if(o.avgLine){const vals=items.filter(i=>i.kind!=="none"&&i.kind!=="fc").map(i=>i.v+(i.v2||0));if(vals.length){const a=vals.reduce((p,c)=>p+c,0)/vals.length;const yy=y(a);
     s+=`<line x1="${padL}" x2="${W-padR}" y1="${yy}" y2="${yy}" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4"/>`;
     s+=`<text x="${W-padR}" y="${yy-5}" text-anchor="end" font-size="11" fill="var(--muted)">เฉลี่ย ${fmtN(a,1)}</text>`;}}
   return s+"</svg>";
 }
 function cycleList(M,count){
-  const D=Number(settings.cycleDay)||1;const out=[];let c=cycleOf(M.t,D);
+  const out=[];let c=cycleAt(M.t);
   const first=M.R.length?M.R[0].n:M.t;
-  for(let i=0;i<count;i++){if(c.s<first&&out.length)break;out.unshift(c);c=cycleOf(c.s-1,D);}
+  for(let i=0;i<count;i++){if(c.e<first&&out.length)break;out.unshift(c);if(!isFinite(c.s))break;c=cycleAt(c.s-1);}
   return out;
 }
 function renderCharts(M){
@@ -527,60 +683,135 @@ function renderCharts(M){
   items.forEach((it,i)=>{const n=M.t-range+1+i;const o=ymd(n);it.label=o.d===1||i===0?o.d+" "+TH_MON[o.m]:String(o.d);});
   $("#dailyChart").innerHTML=barChart(items,{h:200,labelEvery:range<=30?5:range<=60?10:15,avgLine:true,aria:"หน่วยไฟฟ้ารายวัน"});
   const cyc=cycleList(M,12);
-  const ci=cyc.map((c,idx)=>{const st=cycleStats(M,c);const cur=idx===cyc.length-1;const lb=TH_MON[ymd(c.e).m];
-    const mul=cycUnit==="baht"?num(settings.rate):1;
-    const base=cycUnit==="baht"?(billOf(st.total)-st.fc*mul):st.act;
-    return{v:Math.max(0,base),v2:cur?st.fc*mul:0,kind:"act",label:lb,title:fmtD(c.s)+"–"+fmtD(c.e,true)+": "+fmtN(st.total)+" หน่วย / "+fmtB(billOf(st.total))+(cur?" (คาดการณ์)":"")};});
+  const ci=cyc.map((c,ix)=>{const st=cycleStats(M,c);const lb=(ix>0&&cyc[ix-1].pi!==c.pi?"🏠":"")+TH_MON[ymd(c.e).m];
+    const mul=cycUnit==="baht"?num(places[c.pi].rate):1;
+    const base=cycUnit==="baht"?(billOf(st.total,c.pi)-st.fc*mul):st.act;
+    const b=bills[key(c.s)];
+    const mark=b?(cycUnit==="baht"?b.amount:(b.units??0)):0;
+    return{v:Math.max(0,base),v2:st.fc*mul,kind:"act",label:lb,mark,markTitle:b?"บิลจริง "+fmtB(b.amount)+(b.units!=null?" / "+fmtN(b.units)+" หน่วย":""):"",
+      title:fmtD(c.s)+"–"+fmtD(c.e,true)+": "+fmtN(st.total)+" หน่วย / "+fmtB(billOf(st.total,c.pi))+(st.fc>0.5?" (มีส่วนคาดการณ์)":"")+(places.length>1?" · "+places[c.pi].name:"")};});
   $("#cycleChart").innerHTML=ci.length?barChart(ci,{h:200,topLabels:it=>cycUnit==="baht"?fmtN(Math.round((it.v+(it.v2||0)))):fmtN(it.v+(it.v2||0)),fmtY:v=>fmtN(v),aria:"เปรียบเทียบรายรอบบิล"}):"<div class='muted small'>ยังไม่มีข้อมูล</div>";
   // table
-  let h="<tr><th>รอบบิล</th><th style='text-align:right'>หน่วย</th><th style='text-align:right'>เฉลี่ย/วัน</th><th style='text-align:right'>บาท</th><th style='text-align:right'>เทียบรอบก่อน</th></tr>";
-  const rows=cyc.map(c=>{const st=cycleStats(M,c);return{c,st,days:c.e-c.s+1};});
+  let h="<tr><th>รอบบิล</th><th style='text-align:right'>หน่วย</th><th style='text-align:right'>เฉลี่ย/วัน</th><th style='text-align:right'>บาท</th><th style='text-align:right'>บิลจริง</th><th style='text-align:right'>เทียบรอบก่อน</th></tr>";
+  const rows=cyc.map(c=>{const st=cycleStats(M,c);return{c,st,days:Math.max(c.xe-c.xs,0.01)};});
   rows.slice().reverse().forEach((r,i,arr)=>{
     const prev=arr[i+1];let dlt="–";
     if(prev&&prev.st.total>0){const p=(r.st.total-prev.st.total)/prev.st.total*100;dlt=`<span class="delta ${p>0?"up":"down"}">${p>0?"+":""}${fmtN(p)}%</span>`;}
-    const cur=i===0;
-    h+=`<tr><td>${fmtD(r.c.s)}–${fmtD(r.c.e,true)}${cur?" <span class='muted'>(คาด)</span>":""}</td><td class="n">${fmtN(r.st.total)}</td><td class="n">${fmtN(r.st.total/r.days,1)}</td><td class="n">${fmtN(billOf(r.st.total))}</td><td class="n">${dlt}</td></tr>`;
+    const cur=i===0;const b=bills[key(r.c.s)];
+    h+=`<tr><td>${fmtD(r.c.s)}–${fmtD(r.c.e,true)}${cur?" <span class='muted'>(คาด)</span>":""}${places.length>1?`<div class='muted small'>${esc(places[r.c.pi].name)}</div>`:""}</td><td class="n">${fmtN(r.st.total)}</td><td class="n">${fmtN(r.st.total/r.days,1)}</td><td class="n">${fmtN(billOf(r.st.total,r.c.pi))}</td><td class="n">${b?fmtN(b.amount):"–"}</td><td class="n">${dlt}</td></tr>`;
   });
   $("#cmpTable").innerHTML=h;
+  renderBills(M,cyc);
 }
+// ---------- actual bills ----------
+function renderBills(M,cyc){
+  const sel=$("#bCycle");const keep=sel.value;
+  const opts=cyc.slice().reverse().map((c,i)=>{const k=key(c.s);return`<option value="${k}">${fmtD(c.s)} – ${fmtD(c.e,true)}${places.length>1?" · "+esc(places[c.pi].name):""}${i===0?" (รอบปัจจุบัน)":""}${bills[k]?" ✓":""}</option>`;}).join("");
+  sel.innerHTML=opts;
+  if(keep&&[...sel.options].some(o=>o.value===keep))sel.value=keep;
+  else if(cyc.length>1)sel.value=key(cyc[cyc.length-2].s);   // ค่าเริ่มต้น = รอบที่จบแล้วล่าสุด
+  const list=Object.keys(bills).sort().reverse();
+  let h="";
+  list.forEach(k=>{
+    const b=bills[k];const c=cycleAt(fromKey(k));const P=places[c.pi];const st=cycleStats(M,c);const app=billOf(st.total,c.pi);
+    const diff=b.amount-app;const pct=app>0?diff/app*100:0;
+    let sub=`แอปคำนวณ ${fmtB(app)} · ${fmtN(st.total)} หน่วย`;
+    let extra="";
+    if(b.units!=null&&b.units>0){
+      const du=b.units-st.total;sub+=` · บิล ${fmtN(b.units)} หน่วย (${du>0?"+":""}${fmtN(du)})`;
+      const real=(b.amount-(num(P.fee)||0))/b.units;
+      if(c.pi===places.length-1&&isFinite(real)&&real>0&&Math.abs(real-num(P.rate))/num(P.rate)>0.02)
+        extra=`<div class="small" style="margin-top:4px">ราคาจริงตามบิล ≈ <b>${fmtN(real,2)}</b> บาท/หน่วย (ตั้งไว้ ${fmtN(num(P.rate),2)}) <button type="button" class="xbtn" data-userate="${real.toFixed(2)}">ใช้ราคานี้</button></div>`;
+    }
+    h+=`<div class="hrow"><div><div class="v">${fmtB(b.amount)}</div><div class="d">${fmtD(c.s)}–${fmtD(c.e,true)}${places.length>1?" · "+esc(P.name):""}</div><div class="d">${sub}</div>${extra}</div><div class="u"><span class="delta ${diff>0?"up":"down"}">${diff>0?"+":""}${fmtN(diff)} ฿</span><small>${st.total>0?(pct>0?"+":"")+fmtN(pct)+"%":""}</small></div><button type="button" class="xbtn ghost danger" data-delbill="${k}" aria-label="ลบ">ลบ</button></div>`;
+  });
+  $("#billList").innerHTML=h||"<div class='muted small'>ยังไม่ได้กรอกบิลจริง</div>";
+}
+$("#billForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const k=$("#bCycle").value,a=num($("#bAmt").value),u=num($("#bUnits").value);
+  if(!k){toast("ยังไม่มีรอบบิล");return;}
+  if(!isFinite(a)||a<0){toast("กรอกยอดเงินเป็นตัวเลข");$("#bAmt").focus();return;}
+  try{applyData(await gs("saveBill",k,isFinite(u)?u:"",a,""));$("#bAmt").value="";$("#bUnits").value="";toast("บันทึกบิลจริงแล้ว");}
+  catch(err){toast(err.offline?"ต้องมีเน็ตเพื่อบันทึกบิล":"บันทึกไม่สำเร็จ");}
+});
+let pendingBillDel=null;
+$("#billList").addEventListener("click",async e=>{
+  const r=e.target.closest("[data-userate]");
+  if(r){const s={...settings,rate:Number(r.dataset.userate)};try{await putSettings(s);toast("เปลี่ยนราคาต่อหน่วยเป็น "+s.rate+" บาทแล้ว");}catch(err){toast("บันทึกไม่สำเร็จ");}return;}
+  const b=e.target.closest("[data-delbill]");if(!b)return;const k=b.dataset.delbill;
+  if(pendingBillDel!==k){pendingBillDel=k;b.textContent="ยืนยัน?";setTimeout(()=>{if(pendingBillDel===k){pendingBillDel=null;b.textContent="ลบ";}},3000);return;}
+  pendingBillDel=null;try{applyData(await gs("deleteBill",k));toast("ลบแล้ว");}catch(err){toast("ลบไม่สำเร็จ");}
+});
+
 function renderHist(M){
-  const R=M.R;$("#histCount").textContent=R.length+" ครั้ง"+(demo?" (ตัวอย่าง)":"");
-  let h="";const list=R.slice().reverse();
-  list.slice(0,histShown).forEach((r,i)=>{
-    const prev=list[i+1];let u="",sub="";
-    if(prev){const gap=r.n-prev.n;const du=r.v-prev.v;
-      if(du<0){u="<span style='color:var(--bad)'>เลขลดลง</span>";sub="ตรวจสอบ/เปลี่ยนมิเตอร์?";}
-      else{u="+"+fmtN(du,du%1?1:0)+" หน่วย";sub=gap>1?gap+" วัน · "+fmtN(du/gap,1)+"/วัน":"1 วัน";}}
-    h+=`<div class="hrow"><div><div class="v">${fmtN(r.v,r.v%1?1:0)}</div><div class="d">${fmtD(r.n,true)}${r.note?" · "+esc(r.note):""}</div></div><div class="u">${u}<small>${sub}</small></div>${demo?"<span></span>":`<button type="button" class="xbtn ghost danger" data-del="${r.k}" aria-label="ลบ">ลบ</button>`}</div>`;
+  const R=M.R;$("#histCount").textContent=R.length+" ครั้ง"+(places.length>1?" · "+places.length+" ที่พัก":"");
+  let h="";const list=M.rows.slice().reverse();
+  list.slice(0,histShown).forEach(r=>{
+    const prev=r.prev;let u="",sub="";const s=M.ivTo.get(r.k);
+    if(r.firstOfPlace){u="<span class='tag'>ย้ายเข้า</span>";sub="เริ่มนับที่พักใหม่";}
+    else if(prev){const gap=r.x-prev.x;const du=r.v-prev.v;
+      if(r.reset){u="<span class='tag'>เริ่มมิเตอร์ใหม่</span>";sub=s?"ช่วงเปลี่ยน ~"+fmtN(s.u,1)+" หน่วย (ประมาณ)":"";}
+      else if(du<0){u="<span style='color:var(--bad)'>เลขลดลง</span>";sub="ตรวจเลข หรือติ๊ก “เปลี่ยนมิเตอร์”";}
+      else{u="+"+fmtN(du,du%1?1:0)+" หน่วย";sub=fmtGap(gap)+(gap>=0.5?" · "+fmtN(du/gap,1)+"/วัน":"");}}
+    const label=r.pseudo?" <span class='tag'>ย้ายออก "+esc(places[r.pi].name)+"</span>":(r.pending?" <span class='tag'>รอส่ง</span>":"");
+    const btn=r.pseudo||r.pending||r.firstOfPlace?"<span></span>":`<button type="button" class="xbtn ghost danger" data-del="${r.k}" aria-label="ลบ">ลบ</button>`;
+    h+=`<div class="hrow"><div><div class="v">${fmtN(r.v,r.v%1?1:0)}${label}</div><div class="d">${fmtD(r.n,true)}${r.t?" · "+r.t:""}${r.note?" · "+esc(r.note):""}</div></div><div class="u">${u}<small>${sub}</small></div>${btn}</div>`;
   });
   $("#histList").innerHTML=h||"<div class='muted small'>ยังไม่มีบันทึก</div>";
   $("#moreBtn").hidden=list.length<=histShown;
 }
 
 // ---------- entry form ----------
-function updateHint(){
-  const hint=$("#fHint");const v=num($("#fVal").value);const dk=$("#fDate").value;
-  if(!dk||!isFinite(v)||demo){hint.textContent="";return;}
-  const n=fromKey(dk);const prev=[...readings].reverse().find(r=>r.n<n);
-  if(prev){const du=v-prev.v,gap=n-prev.n;
-    if(du<0){hint.innerHTML="<span style='color:var(--bad)'>น้อยกว่าครั้งก่อน ("+fmtN(prev.v)+" เมื่อ "+fmtD(prev.n)+") ตรวจเลขอีกครั้ง</span>";}
-    else hint.innerHTML="ใช้ไป <b>"+fmtN(du,1)+"</b> หน่วย ใน "+gap+" วัน ≈ "+fmtB(du*num(settings.rate))+(gap>1?" <span class='muted'>(เฉลี่ย "+fmtN(du/gap,1)+"/วัน)</span>":"");
-  }else hint.textContent="";
-  if(readings.some(r=>r.k===dk))hint.innerHTML+=" <span class='muted'>· วันนี้มีบันทึกแล้ว จะเขียนทับ</span>";
+let spikeArmed=false;
+function entryCheck(){
+  const v=num($("#fVal").value);const dk=$("#fDate").value;const tm=$("#fTime").value||DEFAULT_TIME;
+  if(!dk||!isFinite(v))return null;
+  const x=fromKey(dk)+hmToF(tm);const pi=placeIdx(fromKey(dk));const P=places[pi];
+  const pool=readings.filter(r=>placeIdx(r.n)===pi).concat(P.ox!=null?[{x:P.ox,v:Number(P.outV),n:Math.floor(P.ox),k:"out"}]:[]);
+  const prev=pool.filter(r=>r.x<x&&r.k!==dk).sort((a,b)=>b.x-a.x)[0];
+  if(!prev)return{x};
+  const du=v-prev.v,gap=x-prev.x;const M=model();
+  const perDay=gap>0?du/gap:0;
+  const spike=!$("#fReset").checked&&du>3&&M.rate>0&&gap>=0.25&&perDay>SPIKE*M.rate;
+  return{x,prev,du,gap,perDay,spike,drop:du<0&&!$("#fReset").checked,rate:M.rate};
 }
-$("#fDate").value=key(todayDn());
+function updateHint(){
+  const hint=$("#fHint");const c=entryCheck();spikeArmed=false;$("#fSave").textContent="บันทึก";
+  if(!c){hint.textContent="";return;}
+  const dk=$("#fDate").value;let h="";
+  if(c.prev){
+    if($("#fReset").checked)h="<span class='muted'>เริ่มนับจากเลขนี้ใหม่ หน่วยช่วงเปลี่ยนมิเตอร์จะประมาณจากค่าเฉลี่ย</span>";
+    else if(c.drop)h="<span style='color:var(--bad)'>น้อยกว่าครั้งก่อน ("+fmtN(c.prev.v)+" เมื่อ "+fmtD(c.prev.n)+") ตรวจเลขอีกครั้ง หรือติ๊ก “เปลี่ยนมิเตอร์ใหม่”</span>";
+    else{h="ใช้ไป <b>"+fmtN(c.du,1)+"</b> หน่วย ใน "+fmtGap(c.gap)+" ≈ "+fmtB(c.du*num(places[placeIdx(fromKey(dk))].rate))+(c.gap>=0.5?" <span class='muted'>(เฉลี่ย "+fmtN(c.perDay,1)+"/วัน)</span>":"");
+      if(c.spike)h+="<br><span style='color:var(--warn)'>⚠ สูงกว่าปกติ ~"+fmtN(c.perDay/c.rate,1)+" เท่า (ปกติ "+fmtN(c.rate,1)+"/วัน) ตรวจว่ากดเลขเกินหรือไม่</span>";}
+  }
+  if(readings.some(r=>r.k===dk))h+=" <span class='muted'>· วันนี้มีบันทึกแล้ว จะเขียนทับ</span>";
+  hint.innerHTML=h;
+}
+function resetEntryDefaults(){$("#fDate").value=key(todayDn());$("#fTime").value=nowHM();}
+resetEntryDefaults();
 $("#fDate").max=key(todayDn());
-$("#fVal").addEventListener("input",updateHint);
+["#fVal","#fTime","#fNote"].forEach(s=>$(s).addEventListener("input",updateHint));
 $("#fDate").addEventListener("change",updateHint);
+$("#fReset").addEventListener("change",updateHint);
+// เมื่อกลับมาเปิดแอป ถ้ายังไม่ได้พิมพ์อะไร ให้วันที่/เวลาเป็นปัจจุบัน
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&!$("#fVal").value){resetEntryDefaults();$("#fDate").max=key(todayDn());}});
 $("#entryForm").addEventListener("submit",async e=>{
   e.preventDefault();
-  const v=num($("#fVal").value),dk=$("#fDate").value;
+  const v=num($("#fVal").value),dk=$("#fDate").value,tm=$("#fTime").value;
   if(!dk){toast("เลือกวันที่ก่อน");return;}
   if(!isFinite(v)||v<0){toast("กรอกเลขมิเตอร์เป็นตัวเลข");$("#fVal").focus();return;}
+  const c=entryCheck();
+  if(c&&(c.spike||c.drop)&&!spikeArmed){spikeArmed=true;$("#fSave").textContent=c.drop?"ยืนยันบันทึก (เลขลดลง)":"ยืนยันบันทึก (เลขสูงผิดปกติ)";toast("ตรวจเลขอีกครั้ง แล้วกดยืนยัน");return;}
   $("#fSave").disabled=true;
-  try{await putReading(dk,v,$("#fNote").value.trim());$("#fVal").value="";$("#fNote").value="";toast("บันทึกแล้ว "+fmtD(fromKey(dk))+" · "+fmtN(v));}
-  catch(err){toast(err&&err.code==="invalid_argument"?"บัญชีนี้ไม่มีสิทธิ์บันทึก":"บันทึกไม่สำเร็จ ลองอีกครั้ง");}
-  $("#fSave").disabled=false;
+  const o={k:dk,v,note:$("#fNote").value.trim(),t:tm||"",reset:$("#fReset").checked};
+  try{
+    const res=await putReading(o);
+    $("#fVal").value="";$("#fNote").value="";$("#fReset").checked=false;resetEntryDefaults();
+    toast(res==="queued"?"ยังไม่มีเน็ต บันทึกไว้ในเครื่องแล้ว จะส่งให้อัตโนมัติ":"บันทึกแล้ว "+fmtD(fromKey(dk))+" "+(tm||"")+" · "+fmtN(v));
+  }catch(err){toast("บันทึกไม่สำเร็จ: "+(err&&err.message||"ลองอีกครั้ง"));}
+  $("#fSave").disabled=false;updateHint();
 });
 
 // ---------- history delete (tap twice) ----------
@@ -607,17 +838,100 @@ $("#rangeSeg").addEventListener("click",e=>{const b=e.target.closest("button");i
 $("#unitSeg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;cycUnit=b.dataset.u;$("#unitSeg").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));render();});
 
 // ---------- settings ----------
-(function(){const s=$("#sCycle");for(let d=1;d<=28;d++){const o=document.createElement("option");o.value=d;o.textContent=d===1?"1 (ตามเดือนปฏิทิน)":String(d);s.appendChild(o);}})();
-function fillSettings(){$("#sRate").value=settings.rate;$("#sFee").value=settings.fee||"";$("#sCycle").value=settings.cycleDay;$("#sMin").value=settings.minCharge||"";}
+["#sCycle","#mvCycle"].forEach(id=>{const s=$(id);for(let d=1;d<=28;d++){const o=document.createElement("option");o.value=d;o.textContent=d===1?"1 (ตามเดือนปฏิทิน)":String(d);s.appendChild(o);}});
+function fillSettings(){
+  $("#sRate").value=settings.rate;$("#sFee").value=settings.fee||"";$("#sCycle").value=settings.cycleDay;$("#sMin").value=settings.minCharge||"";
+  $("#sBudget").value=settings.budget||"";
+  $("#sPlace").value=curPlace().name||"";
+  renderPlaces();
+  const rd=String(settings.remindDays||0);const sr=$("#sRemind");
+  if(![...sr.options].some(o=>o.value===rd)){const o=document.createElement("option");o.value=rd;o.textContent=rd+" วัน";sr.appendChild(o);}
+  sr.value=rd;$("#sRemindCycle").checked=!!Number(settings.remindCycle);
+  const wantMail=Number(settings.remindDays)>0||Number(settings.remindCycle)>0||Number(settings.budget)>0;
+  const rn=$("#remindNote");
+  rn.innerHTML=wantMail&&!triggerOk
+    ?"<span style='color:var(--warn)'>⚠ ยังไม่ได้เปิดระบบอีเมลเตือน: เปิด Google Sheet → เมนู ⚡ มิเตอร์ → “เปิดอีเมลเตือนรายวัน” แล้วกดอนุญาตสิทธิ์ (ทำครั้งเดียว)</span>"
+    :"อีเมลส่งไปที่บัญชี Google เจ้าของชีต วันละครั้งราว 19:00 ถ้าตั้งงบไว้ จะเตือนครั้งเดียวต่อรอบเมื่อคาดว่าจะเกินงบ"+(triggerOk?" · <span style='color:var(--good)'>ระบบเตือนทำงานอยู่</span>":"");
+}
 fillSettings();
 $("#setForm").addEventListener("submit",async e=>{
   e.preventDefault();
-  const s={rate:num($("#sRate").value),fee:num($("#sFee").value)||0,cycleDay:Number($("#sCycle").value)||1,minCharge:num($("#sMin").value)||0};
+  const s={rate:num($("#sRate").value),fee:num($("#sFee").value)||0,cycleDay:Number($("#sCycle").value)||1,minCharge:num($("#sMin").value)||0,
+    budget:num($("#sBudget").value)||0,placeName:$("#sPlace").value.trim(),remindDays:Number($("#sRemind").value)||0,remindCycle:$("#sRemindCycle").checked?1:0};
   if(!isFinite(s.rate)||s.rate<=0){toast("ราคาต่อหน่วยต้องมากกว่า 0");return;}
-  try{await putSettings(s);toast("บันทึกการตั้งค่าแล้ว");}catch(err){toast("บันทึกไม่สำเร็จ");}
+  try{await putSettings(s);toast("บันทึกการตั้งค่าแล้ว");}catch(err){toast(err.offline?"ต้องมีเน็ตเพื่อบันทึกการตั้งค่า":"บันทึกไม่สำเร็จ");}
+});
+
+// ---------- move (ย้ายที่พัก) ----------
+function renderPlaces(){
+  const P=curPlace();
+  $("#placeSince").textContent=P.start?"ปัจจุบัน: "+(P.name||"")+" ตั้งแต่ "+fmtD(P.sn,true):"";
+  let h="";
+  places.slice().reverse().forEach((p,i)=>{
+    const cur=i===0;
+    const range=(p.start?fmtD(p.sn,true):"เริ่มต้น")+" – "+(cur?"ปัจจุบัน":fmtD(p.endN+1,true));
+    const out=p.outV!=null?" · เลขย้ายออก "+fmtN(Number(p.outV)):"";
+    h+=`<div class="hrow"><div><div class="v" style="font-family:var(--sans);font-size:15px">${esc(p.name||"ที่พัก")} ${cur?"<span class='tag'>ปัจจุบัน</span>":""}</div><div class="d">${range}${out}</div></div><div class="u">${fmtN(num(p.rate),2)} ฿/หน่วย<small>ตัดรอบวันที่ ${p.cycleDay}${num(p.fee)?" · ค่าบริการ "+fmtN(num(p.fee)):""}</small></div><span></span></div>`;
+  });
+  $("#placeList").innerHTML=places.length>1?h:"";
+  $("#undoMoveBtn").hidden=places.length<2;
+}
+function fillMoveDefaults(){
+  const P=curPlace();const t=key(todayDn()),hm=nowHM();
+  if(!$("#mvDate").value){$("#mvDate").value=t;$("#mvTime").value=hm;$("#mvOutDate").value=t;$("#mvOutTime").value=hm;}
+  if(!$("#mvRate").value){$("#mvRate").value=P.rate;$("#mvFee").value=P.fee||"";$("#mvCycle").value=P.cycleDay||1;$("#mvMin").value=P.minCharge||"";}
+  moveHint();
+}
+function moveHint(){
+  const M=model();const last=M.last;const ov=num($("#mvOutV").value);let h="";
+  if(last){
+    h="จดล่าสุดที่เดิม: "+fmtN(last.v)+" เมื่อ "+fmtD(last.n,true)+(last.t?" "+last.t:"");
+    if(isFinite(ov)){const du=ov-last.v;h+=du<0?" · <span style='color:var(--bad)'>เลขย้ายออกน้อยกว่าครั้งล่าสุด</span>":" · ช่วงสุดท้ายใช้ไป <b>"+fmtN(du,1)+"</b> หน่วย";}
+  }
+  const dk=$("#mvDate").value;const clash=readings.filter(r=>dk&&r.k>=dk).map(r=>fmtD(r.n));
+  if(clash.length)h+="<br><span style='color:var(--bad)'>มีบันทึกตั้งแต่วันย้ายเข้าอยู่แล้ว ("+clash.join(", ")+") ลบในแท็บประวัติก่อน หรือใส่เป็นเลขย้ายออก</span>";
+  if(dk&&curPlace().start&&dk<=curPlace().start)h+="<br><span style='color:var(--bad)'>วันย้ายเข้าต้องหลังวันเริ่มของที่พักปัจจุบัน</span>";
+  $("#mvHint").innerHTML=h;
+}
+$("#moveBox").addEventListener("toggle",()=>{if($("#moveBox").open)fillMoveDefaults();});
+["#mvOutV","#mvDate"].forEach(id=>$(id).addEventListener("input",moveHint));
+$("#mvDate").addEventListener("change",()=>{if(!$("#mvOutDate").dataset.touched)$("#mvOutDate").value=$("#mvDate").value;moveHint();});
+$("#mvOutDate").addEventListener("change",()=>{$("#mvOutDate").dataset.touched="1";});
+let moveArm=false;
+$("#moveForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const o={name:$("#mvName").value.trim(),k:$("#mvDate").value,t:$("#mvTime").value,v:num($("#mvV").value),
+    rate:num($("#mvRate").value),fee:num($("#mvFee").value)||0,cycleDay:Number($("#mvCycle").value)||1,minCharge:num($("#mvMin").value)||0,
+    outV:$("#mvOutV").value.trim()===""?"":num($("#mvOutV").value),outK:$("#mvOutDate").value,outT:$("#mvOutTime").value};
+  if(!o.name){toast("ใส่ชื่อที่พักใหม่");$("#mvName").focus();return;}
+  if(!o.k){toast("เลือกวันย้ายเข้า");return;}
+  if(!isFinite(o.v)||o.v<0){toast("กรอกเลขมิเตอร์แรกของที่ใหม่");$("#mvV").focus();return;}
+  if(!isFinite(o.rate)||o.rate<=0){toast("ราคาต่อหน่วยต้องมากกว่า 0");return;}
+  if(o.outV!==""&&(!isFinite(o.outV)||o.outV<0)){toast("เลขย้ายออกไม่ถูกต้อง");return;}
+  if(o.outK&&o.outK>o.k){toast("วันย้ายออกต้องไม่หลังวันย้ายเข้า");return;}
+  if(!moveArm){moveArm=true;$("#mvGo").textContent="กดอีกครั้งเพื่อยืนยันย้ายไป "+o.name;setTimeout(()=>{moveArm=false;$("#mvGo").textContent="ยืนยันย้ายที่พัก";},5000);return;}
+  moveArm=false;$("#mvGo").disabled=true;
+  try{applyData(await gs("moveIn",o));toast("ย้ายไป "+o.name+" แล้ว");$("#moveBox").open=false;$("#moveForm").reset();go("home");}
+  catch(err){toast(err.offline?"ต้องมีเน็ตเพื่อย้ายที่พัก":"ย้ายไม่สำเร็จ: "+(err&&err.message||""));}
+  $("#mvGo").disabled=false;$("#mvGo").textContent="ยืนยันย้ายที่พัก";
+});
+let undoArm=false;
+$("#undoMoveBtn").addEventListener("click",async()=>{
+  const b=$("#undoMoveBtn");
+  if(!undoArm){undoArm=true;b.textContent="กดอีกครั้ง: ลบ “"+curPlace().name+"” และกลับไปที่พักเดิม";setTimeout(()=>{undoArm=false;b.textContent="ยกเลิกการย้ายครั้งล่าสุด";},5000);return;}
+  undoArm=false;b.disabled=true;
+  try{applyData(await gs("undoMove"));toast("ยกเลิกการย้ายแล้ว");}catch(err){toast("ยกเลิกไม่ได้: "+(err&&err.message||""));}
+  b.disabled=false;b.textContent="ยกเลิกการย้ายครั้งล่าสุด";
 });
 
 // ---------- import ----------
+const XLSX_URL="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+let xlsxP=null;
+function loadXLSX(){
+  if(window.XLSX)return Promise.resolve();
+  if(!xlsxP)xlsxP=new Promise((res,rej)=>{const s=document.createElement("script");s.src=XLSX_URL;s.onload=()=>res();s.onerror=()=>{xlsxP=null;rej(new Error("load"));};document.head.appendChild(s);});
+  return xlsxP;
+}
 let impRows=null;
 function parseDate(x){
   if(x==null||x==="")return null;
@@ -688,7 +1002,7 @@ $("#impFile").addEventListener("change",async e=>{
   try{
     const buf=await f.arrayBuffer();
     if(/\.(csv|txt)$/i.test(f.name)){let t=new TextDecoder("utf-8").decode(buf);if(t.includes("\uFFFD"))t=new TextDecoder("windows-874").decode(buf);loadTable(parseText(t));}
-    else{if(!window.XLSX){toast("โหลดตัวอ่าน Excel ไม่ได้ ลองบันทึกเป็น CSV");return;}
+    else{try{toast("กำลังโหลดตัวอ่าน Excel…");await loadXLSX();}catch(e){toast("โหลดตัวอ่าน Excel ไม่ได้ ลองบันทึกเป็น CSV");return;}
       const wb=XLSX.read(buf,{type:"array",cellDates:true});const ws=wb.Sheets[wb.SheetNames[0]];
       loadTable(XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:""}));}
   }catch(err){toast("อ่านไฟล์ไม่ได้");}
@@ -721,7 +1035,7 @@ $("#impGo").addEventListener("click",async()=>{
 
 // ---------- export ----------
 function csv(){let s="﻿date,meter,note\n";readings.forEach(r=>{s+=r.k+","+r.v+","+JSON.stringify(r.note||"")+"\n";});return s;}
-async function copyText(){try{await navigator.clipboard.writeText(csv());toast("คัดลอกแล้ว วางใน Excel ได้เลย");}catch(e){$("#impText").value=csv();document.querySelector("details").open=true;$("#impText").select();toast("เลือกข้อความให้แล้ว กดคัดลอกเอง");}}
+async function copyText(){try{await navigator.clipboard.writeText(csv());toast("คัดลอกแล้ว วางใน Excel ได้เลย");}catch(e){$("#impText").value=csv();$("details.adv").open=true;$("#pasteBox").open=true;$("#impText").select();toast("เลือกข้อความให้แล้ว กดคัดลอกเอง");}}
 $("#copyBtn").addEventListener("click",()=>{if(!readings.length){toast("ยังไม่มีข้อมูล");return;}copyText();});
 
 // ---------- wipe ----------
