@@ -11,7 +11,10 @@
  *   Places   : วันย้ายเข้า | เวลา | ชื่อที่พัก | rate | fee | cycleDay | minCharge | เลขย้ายออก | วันย้ายออก | เวลาย้ายออก
  *              (แถวสุดท้าย = ที่พักปัจจุบัน; ราคา/วันตัดรอบใน Settings จะซิงก์กับแถวนี้)
  *
- * อีเมลเตือน: ฟังก์ชัน dailyCheck รันทุกวันราว 19:00 (ติดตั้งด้วย installTriggers หรือบันทึกการตั้งค่าเตือนจากหน้าเว็บ)
+ * จดได้หลายครั้งต่อวัน: แต่ละแถวระบุด้วย วันที่ + เวลาที่จด
+ * ความปลอดภัย: ใส่ PIN ผิด 5 ครั้ง ล็อก 15 นาที; ไม่มีคำสั่ง "ลบทั้งหมด" ทาง API (ลบเองในชีต หรือรัน wipeAll ใน editor)
+ * สำรองอัตโนมัติ: ทุก 7 วัน (ตอนมีการบันทึก) คัดลอกชีต Readings/Places/Bills เป็นชีตซ่อน "Backup yyyy-mm-dd" เก็บ 4 ชุดล่าสุด
+ * อีเมลเตือน (ไม่ได้เปิดใช้): dailyCheck / installTriggers
  */
 
 const READINGS = 'Readings';
@@ -24,37 +27,51 @@ const AUTO_FILL_NOTE = 'เติมเฉลี่ยอัตโนมัต�
 const APP_URL = 'https://sopoltawit52-commits.github.io/meter-log/';
 const DEFAULTS = { rate: 5, fee: 0, cycleDay: 1, minCharge: 0, budget: 0, remindDays: 0, remindCycle: 0 };
 const DEFAULT_TIME = '12:00';             // ใช้คำนวณเมื่อแถวไม่มีเวลาที่จด
+const PIN_MAX_FAIL = 5;                   // ใส่ PIN ผิดได้กี่ครั้ง
+const PIN_LOCK_SEC = 15 * 60;             // ล็อกนานเท่าไร (วินาที)
+const BACKUP_EVERY_DAYS = 7;
+const BACKUP_KEEP = 4;
+const WRITE_ACTIONS = ['saveReading', 'deleteReading', 'saveSettings', 'importReadings', 'saveBill', 'deleteBill', 'moveIn', 'undoMove'];
 
 // ---------- web API ----------
 const ACTIONS = {
   getData: () => getData(),
-  saveReading: (k, v, note, t, reset) => saveReading(k, v, note, t, reset),
-  deleteReading: (k) => deleteReading(k),
+  saveReading: (k, v, note, t, reset, origK, origT) => saveReading(k, v, note, t, reset, origK, origT),
+  deleteReading: (k, t) => deleteReading(k, t),
   saveSettings: (st) => saveSettings(st),
   importReadings: (list) => importReadings(list),
   saveBill: (k, units, amount, note) => saveBill(k, units, amount, note),
   deleteBill: (k) => deleteBill(k),
   moveIn: (o) => moveIn(o),
-  undoMove: () => undoMove(),
-  wipeAll: () => wipeAll()
+  undoMove: () => undoMove()
 };
 
 function json_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
 
+// คืนค่า 'ok' | 'bad' | 'locked'  (นับครั้งที่ผิดใน CacheService, ล็อกชั่วคราวเมื่อผิดเกินกำหนด)
 function checkPin_(pin) {
   const want = PropertiesService.getScriptProperties().getProperty('PIN');
   if (!want) throw new Error('ยังไม่ได้ตั้ง PIN ใน Script Properties');
-  return String(pin || '') === want;
+  const cache = CacheService.getScriptCache();
+  const fails = Number(cache.get('pinFails') || 0);
+  if (fails >= PIN_MAX_FAIL) return 'locked';
+  if (String(pin || '') === want) { if (fails) cache.remove('pinFails'); return 'ok'; }
+  cache.put('pinFails', String(fails + 1), PIN_LOCK_SEC);
+  Utilities.sleep(800);   // ชะลอการเดา
+  return fails + 1 >= PIN_MAX_FAIL ? 'locked' : 'bad';
 }
 
 function doPost(e) {
   try {
     const req = JSON.parse((e && e.postData && e.postData.contents) || '{}');
-    if (!checkPin_(req.pin)) return json_({ ok: false, error: 'bad_pin' });
+    const pinState = checkPin_(req.pin);
+    if (pinState === 'locked') return json_({ ok: false, error: 'locked', minutes: PIN_LOCK_SEC / 60 });
+    if (pinState !== 'ok') return json_({ ok: false, error: 'bad_pin' });
     const fn = ACTIONS[req.action];
     if (!fn) return json_({ ok: false, error: 'unknown_action' });
+    if (WRITE_ACTIONS.indexOf(req.action) >= 0) { try { autoBackup_(); } catch (be) { console.warn('backup: ' + be); } }
     const data = fn.apply(null, Array.isArray(req.args) ? req.args : []);
     return json_({ ok: true, data: data });
   } catch (err) {
@@ -77,6 +94,7 @@ function onOpen() {
     .addItem('ย้ายข้อมูลจากชีต "' + OLD_SHEET + '"', 'migrateOldSheet')
     .addItem('เติมเวลาที่จดจากชีต "' + OLD_SHEET + '"', 'backfillTimesFromOldSheet')
     .addItem('เรียงชีต Readings ตามวันที่', 'sortReadings')
+    .addItem('สำรองข้อมูลตอนนี้', 'backupNow')
     .addSeparator()
     .addItem('เปิดอีเมลเตือนรายวัน (ติดตั้ง trigger)', 'installTriggers')
     .addItem('ทดสอบส่งอีเมลเตือนตอนนี้', 'testReminderEmail')
@@ -144,20 +162,28 @@ function toTime_(x) {
   return ('0' + m[1]).slice(-2) + ':' + m[2];
 }
 
-function readMap_() {
+// ทุกแถวที่จด (จดได้หลายครั้งต่อวัน) เรียงตามวันที่+เวลา: [{k, t, v, note, reset, row}]
+function readList_() {
   const sh = readingsSheet_();
   const last = sh.getLastRow();
-  const map = {};
-  if (last < 2) return map;
-  sh.getRange(2, 1, last - 1, 6).getValues().forEach(r => {
+  const out = [];
+  if (last < 2) return out;
+  sh.getRange(2, 1, last - 1, 6).getValues().forEach((r, i) => {
     const k = toKey_(r[0]);
     const v = Number(r[1]);
     if (!k || r[1] === '' || !isFinite(v)) return;
     let t = toTime_(r[4]);
     // แถวเก่าที่ไม่มีเวลา: ถ้าบันทึกในวันเดียวกับวันที่จด ใช้เวลาที่กดบันทึก
     if (!t && r[3] instanceof Date && toKey_(r[3]) === k) t = toTime_(r[3]);
-    map[k] = { v: v, note: String(r[2] || ''), t: t, reset: String(r[5]).toUpperCase() === 'Y' };
+    out.push({ k: k, t: t, v: v, note: String(r[2] || ''), reset: String(r[5]).toUpperCase() === 'Y', row: i + 2 });
   });
+  return out.sort((a, b) => (a.k + (a.t || DEFAULT_TIME)) < (b.k + (b.t || DEFAULT_TIME)) ? -1 : 1);
+}
+
+// แบบเดิม: 1 ค่าต่อวัน (ครั้งล่าสุดของวัน) ใช้กับหน้าเว็บรุ่นเก่า / การคำนวณฝั่งเซิร์ฟเวอร์
+function readMap_() {
+  const map = {};
+  readList_().forEach(o => { map[o.k] = { v: o.v, note: o.note, t: o.t, reset: o.reset }; });
   return map;
 }
 
@@ -241,47 +267,56 @@ function validKey_(k) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(k)) throw new Error('รูปแบบวันที่ไม่ถูกต้อง: ' + k);
 }
 
-// upsert many rows at once: list = [{k, v, note, t, reset}]
+// upsert many rows at once: list = [{k, v, note, t, reset, origK?, origT?}]
+//   ระบุแถวด้วย วันที่+เวลา; ถ้าไม่มีเวลา (เช่นนำเข้า) จับคู่ด้วยวันที่อย่างเดียว
+//   origK/origT = แถวเดิมที่ต้องการแก้ (ใช้ตอนแก้บันทึก เปลี่ยนวันที่/เวลาได้)
 function upsert_(list) {
   const sh = readingsSheet_();
   const last = sh.getLastRow();
-  const index = {};
-  if (last >= 2) {
-    sh.getRange(2, 1, last - 1, 1).getValues().forEach((r, i) => {
-      const k = toKey_(r[0]); if (k) index[k] = i + 2;
-    });
-  }
+  const rows = [];
+  if (last >= 2) sh.getRange(2, 1, last - 1, 5).getValues().forEach((r, i) => rows.push({ k: toKey_(r[0]), t: toTime_(r[4]), row: i + 2 }));
+  const find = (k, t) => {
+    if (!k) return null;
+    const hit = rows.find(x => x.k === k && (t ? x.t === t : true));
+    return hit || null;
+  };
   const now = new Date();
-  const append = [];
   list.forEach(o => {
     validKey_(o.k);
     const v = Number(o.v);
     if (!isFinite(v) || v < 0) throw new Error('เลขมิเตอร์ไม่ถูกต้อง: ' + o.v);
-    const row = [o.k, v, String(o.note || ''), now, toTime_(o.t), o.reset ? 'Y' : ''];
-    if (index[o.k] > 0) {
-      sh.getRange(index[o.k], 5).setNumberFormat('@');
-      sh.getRange(index[o.k], 1, 1, 6).setValues([row]);
-    } else if (index[o.k] === -1) {
-      append[append.findIndex(a => a[0] === o.k)] = row;
-    } else { append.push(row); index[o.k] = -1; }
+    const t = toTime_(o.t);
+    const row = [o.k, v, String(o.note || ''), now, t, o.reset ? 'Y' : ''];
+    let hit = o.origK ? find(o.origK, toTime_(o.origT)) : null;
+    if (o.origK && !hit) throw new Error('ไม่พบบันทึกเดิม ' + o.origK + ' ' + (o.origT || '') + ' (อาจถูกลบไปแล้ว)');
+    if (!hit) hit = find(o.k, t);
+    if (hit) {
+      sh.getRange(hit.row, 1).setNumberFormat('@');
+      sh.getRange(hit.row, 5).setNumberFormat('@');
+      sh.getRange(hit.row, 1, 1, 6).setValues([row]);
+      hit.k = o.k; hit.t = t;
+    } else {
+      const r = sh.getLastRow() + 1;
+      sh.getRange(r, 1).setNumberFormat('@');
+      sh.getRange(r, 5).setNumberFormat('@');
+      sh.getRange(r, 1, 1, 6).setValues([row]);
+      rows.push({ k: o.k, t: t, row: r });
+    }
   });
-  if (append.length) {
-    const start = sh.getLastRow() + 1;
-    sh.getRange(start, 1, append.length, 1).setNumberFormat('@');
-    sh.getRange(start, 5, append.length, 1).setNumberFormat('@');
-    sh.getRange(start, 1, append.length, 6).setValues(append);
-  }
 }
 
 // ---------- API ----------
 function getData() {
   let triggerOk = false;
   try { triggerOk = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'dailyCheck'); } catch (e) {}
-  return { readings: readMap_(), settings: readSettings_(), bills: readBills_(), places: readPlaces_().map(placeOut_), triggerOk: triggerOk };
+  const list = readList_().map(o => ({ k: o.k, t: o.t, v: o.v, note: o.note, reset: o.reset }));
+  const map = {};
+  list.forEach(o => { map[o.k] = { v: o.v, note: o.note, t: o.t, reset: o.reset }; });
+  return { readings: map, readingList: list, settings: readSettings_(), bills: readBills_(), places: readPlaces_().map(placeOut_), triggerOk: triggerOk };
 }
 
-function saveReading(k, v, note, t, reset) {
-  withLock_(() => upsert_([{ k: k, v: v, note: note, t: t, reset: !!reset }]));
+function saveReading(k, v, note, t, reset, origK, origT) {
+  withLock_(() => { upsert_([{ k: k, v: v, note: note, t: t, reset: !!reset, origK: origK || '', origT: origT || '' }]); if (origK) sortReadings(); });
   return getData();
 }
 
@@ -291,16 +326,13 @@ function importReadings(list) {
   return getData();
 }
 
-function deleteReading(k) {
+// ลบบันทึก: ระบุวันที่ + เวลา (ถ้าไม่ระบุเวลา ลบทุกแถวของวันนั้น)
+function deleteReading(k, t) {
   validKey_(k);
+  const tt = toTime_(t);
   withLock_(() => {
-    const sh = readingsSheet_();
-    const last = sh.getLastRow();
-    if (last < 2) return;
-    const vals = sh.getRange(2, 1, last - 1, 1).getValues();
-    for (let i = vals.length - 1; i >= 0; i--) {
-      if (toKey_(vals[i][0]) === k) sh.deleteRow(i + 2);
-    }
+    readList_().filter(o => o.k === k && (!tt || o.t === tt)).map(o => o.row).sort((a, b) => b - a)
+      .forEach(r => readingsSheet_().deleteRow(r));
   });
   return getData();
 }
@@ -373,7 +405,7 @@ function moveIn(o) {
   withLock_(() => {
     const pl = readPlaces_(), cur = pl[pl.length - 1];
     if (o.k <= cur.start) throw new Error('วันย้ายเข้าต้องอยู่หลังวันเริ่มของที่พักปัจจุบัน (' + cur.start + ')');
-    const later = Object.keys(readMap_()).filter(k => k >= o.k);
+    const later = readList_().filter(x => x.k >= o.k).map(x => x.k + (x.t ? ' ' + x.t : ''));
     if (later.length) throw new Error('มีบันทึกตั้งแต่วันย้ายเข้าแล้ว (' + later.join(', ') + ') ลบออกก่อน หรือเลือกวันย้ายเข้าใหม่');
     const ps = placesSheet_();
     if (o.outV !== '' && o.outV != null) {
@@ -406,16 +438,14 @@ function undoMove() {
     const pl = readPlaces_();
     if (pl.length < 2) throw new Error('ยังไม่เคยย้ายที่พัก');
     const cur = pl[pl.length - 1], prev = pl[pl.length - 2];
-    const later = Object.keys(readMap_()).filter(k => k > cur.start);
+    const all = readList_();
+    const first = all.find(o => o.k === cur.start && (!cur.t || o.t === cur.t)) || all.find(o => o.k === cur.start);
+    const later = all.filter(o => o !== first && (o.k > cur.start || (o.k === cur.start && (o.t || DEFAULT_TIME) > (cur.t || '00:00'))));
     if (later.length) throw new Error('มีบันทึกหลังวันย้ายเข้าแล้ว ' + later.length + ' รายการ ลบออกก่อนจึงจะยกเลิกการย้ายได้');
     const ps = placesSheet_();
     ps.deleteRow(cur.row);
     ps.getRange(prev.row, 8, 1, 3).clearContent();
-    const sh = readingsSheet_(), last = sh.getLastRow();
-    if (last >= 2) {
-      const vals = sh.getRange(2, 1, last - 1, 1).getValues();
-      for (let i = vals.length - 1; i >= 0; i--) if (toKey_(vals[i][0]) === cur.start) sh.deleteRow(i + 2);
-    }
+    if (first) readingsSheet_().deleteRow(first.row);
     const ss = settingsSheet_();
     const merged = Object.assign(readBaseSettings_(), { rate: prev.rate, fee: prev.fee, cycleDay: prev.cycleDay, minCharge: prev.minCharge });
     const rows = Object.keys(merged).map(k => [k, merged[k]]);
@@ -425,6 +455,7 @@ function undoMove() {
   return getData();
 }
 
+// ไม่เปิดให้เรียกผ่าน API แล้ว — ถ้าจำเป็นจริง ๆ ให้รันจาก Apps Script editor
 function wipeAll() {
   withLock_(() => {
     const sh = readingsSheet_();
@@ -435,8 +466,36 @@ function wipeAll() {
 
 function sortReadings() {
   const sh = readingsSheet_();
-  if (sh.getLastRow() > 2) sh.getRange(2, 1, sh.getLastRow() - 1, 6).sort({ column: 1, ascending: true });
+  if (sh.getLastRow() > 2) sh.getRange(2, 1, sh.getLastRow() - 1, 6).sort([{ column: 1, ascending: true }, { column: 5, ascending: true }]);
 }
+
+// ---------- automatic backup (ไม่ต้องใช้สิทธิ์เพิ่ม) ----------
+function autoBackup_(force) {
+  const props = PropertiesService.getScriptProperties();
+  const lastB = Number(props.getProperty('lastBackup') || 0);
+  if (!force && Date.now() - lastB < BACKUP_EVERY_DAYS * 86400000) return '';
+  const ss = ss_();
+  const name = 'Backup ' + Utilities.formatDate(new Date(), tz_(), 'yyyy-MM-dd HHmm');
+  const bk = ss.insertSheet(name, ss.getSheets().length);
+  let col = 1;
+  [READINGS, PLACES, BILLS, SETTINGS].forEach(n => {
+    const src = ss.getSheetByName(n);
+    if (!src || src.getLastRow() < 1) return;
+    const vals = src.getRange(1, 1, src.getLastRow(), src.getLastColumn()).getValues();
+    bk.getRange(1, col).setValue('== ' + n + ' ==').setFontWeight('bold');
+    bk.getRange(2, col, vals.length, vals[0].length).setNumberFormat('@').setValues(vals.map(r => r.map(c => c instanceof Date ? Utilities.formatDate(c, tz_(), 'yyyy-MM-dd HH:mm') : c)));
+    col += vals[0].length + 1;
+  });
+  bk.hideSheet();
+  // เก็บแค่ BACKUP_KEEP ชุดล่าสุด
+  ss.getSheets().filter(x => x.getName().indexOf('Backup ') === 0).sort((a, b) => a.getName() < b.getName() ? 1 : -1)
+    .slice(BACKUP_KEEP).forEach(x => ss.deleteSheet(x));
+  props.setProperty('lastBackup', String(Date.now()));
+  return name;
+}
+
+// รันเองจาก editor ได้: สำรองทันที
+function backupNow() { const n = autoBackup_(true); Logger.log('สำรองแล้ว: ' + n); return n; }
 
 // ---------- usage model (ตรรกะเดียวกับหน้าเว็บ) ----------
 const DAYMS_ = 86400000;
